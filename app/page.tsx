@@ -1,25 +1,25 @@
 'use client';
 
 import ManageExercises from '@/components/ManageExercises';
-import ExerciseRow from '@/components/ExerciseRow';
 import LogDialog from '@/components/LogDialog';
 import SettingsDialog from '@/components/SettingsDialog';
-import { ExerciseWithLogs, LogEntry } from '@/lib/types';
-import { AppSettings, getSettings, saveSettings } from '@/lib/settings';
-import { getPlannedExercises, savePlannedExercises } from '@/lib/planMode';
-import { format, subDays } from 'date-fns';
-import { useEffect, useState } from 'react';
+import PageHeader from '@/components/PageHeader';
+import ExerciseTable from '@/components/ExerciseTable';
+import { LogEntry } from '@/lib/types';
+import { useSettings } from '@/lib/hooks/useSettings';
+import { usePlanMode } from '@/lib/hooks/usePlanMode';
+import { useDateRange } from '@/lib/hooks/useDateRange';
+import { useExercises } from '@/lib/hooks/useExercises';
+import { useState } from 'react';
 
 export default function Home() {
-  const [exercises, setExercises] = useState<ExerciseWithLogs[]>([]);
-  const [dates, setDates] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { settings, updateSettings } = useSettings();
+  const { planMode, setPlanMode, plannedExercises, togglePlanned } = usePlanMode();
+  const { dates, getDayName, getDayNumber } = useDateRange(settings.visibleDays);
+  const { exercises, isLoading, sortByUrgency, setSortByUrgency, refetch } = useExercises(settings.visibleDays);
+
   const [showManage, setShowManage] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState<AppSettings>({ visibleDays: 7 });
-  const [sortByUrgency, setSortByUrgency] = useState(false);
-  const [planMode, setPlanMode] = useState(false);
-  const [plannedExercises, setPlannedExercises] = useState<Set<string>>(new Set());
   const [dialogState, setDialogState] = useState<{
     exerciseId: number;
     exerciseName: string;
@@ -27,119 +27,11 @@ export default function Home() {
     existingLog?: LogEntry;
   } | null>(null);
 
-  // Load settings from localStorage on mount
-  useEffect(() => {
-    const loadedSettings = getSettings();
-    setSettings(loadedSettings);
-  }, []);
-
-  // Load planned exercises from localStorage on mount and clean up old dates
-  useEffect(() => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const planned = getPlannedExercises();
-    const todayOnly = planned.filter(p => p.date === today);
-
-    // Clean up old dates if needed
-    if (planned.length !== todayOnly.length) {
-      savePlannedExercises(todayOnly);
-    }
-
-    setPlannedExercises(new Set(todayOnly.map(p => `${p.exerciseId}-${p.date}`)));
-  }, []);
-
-  // Generate dates based on settings
-  useEffect(() => {
-    const today = new Date();
-    const days = Array.from({ length: settings.visibleDays }, (_, i) => {
-      return format(subDays(today, settings.visibleDays - 1 - i), 'yyyy-MM-dd');
-    });
-    setDates(days);
-  }, [settings.visibleDays]);
-
-  // Sort exercises based on urgency mode
-  const sortExercises = (exercisesList: ExerciseWithLogs[], byUrgency: boolean) => {
-    if (!byUrgency) {
-      // Sort by display_order (already sorted from API, but ensure it)
-      return [...exercisesList].sort((a, b) => a.display_order - b.display_order);
-    } else {
-      // Sort by urgency (last exercise date, oldest first)
-      return [...exercisesList].sort((a, b) => {
-        // Find the most recent completed date for each exercise
-        const getLastCompletedDate = (exercise: ExerciseWithLogs) => {
-          const completedDates = Object.entries(exercise.logs)
-            .filter(([, log]) => log.completed)
-            .map(([date]) => date)
-            .sort()
-            .reverse();
-          return completedDates[0] || ''; // Return empty string if never completed
-        };
-
-        const lastA = getLastCompletedDate(a);
-        const lastB = getLastCompletedDate(b);
-
-        // Exercises never completed go to the top
-        if (!lastA && !lastB) return a.display_order - b.display_order;
-        if (!lastA) return -1;
-        if (!lastB) return 1;
-
-        // Sort by date (oldest first)
-        return lastA.localeCompare(lastB);
-      });
-    }
-  };
-
-  // Fetch exercises and logs
-  const fetchData = async () => {
-    try {
-      const response = await fetch(`/api/logs?days=${settings.visibleDays}`);
-      const data = await response.json();
-      const sorted = sortExercises(data.exercises || [], sortByUrgency);
-      setExercises(sorted);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setExercises([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (settings.visibleDays > 0) {
-      fetchData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.visibleDays]);
-
-  // Re-sort exercises when sort mode changes
-  useEffect(() => {
-    if (exercises.length > 0) {
-      setExercises(prev => sortExercises(prev, sortByUrgency));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortByUrgency]);
-
   // Toggle handler - plan mode or log dialog
   const handleToggle = (exerciseId: number, date: string) => {
     if (planMode) {
-      // In plan mode: always mark only today (last date), regardless of which box was clicked
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const key = `${exerciseId}-${today}`;
-      const newPlanned = new Set(plannedExercises);
-
-      if (newPlanned.has(key)) {
-        newPlanned.delete(key);
-      } else {
-        newPlanned.add(key);
-      }
-
-      setPlannedExercises(newPlanned);
-
-      // Save to localStorage
-      const plannedArray = Array.from(newPlanned).map(k => {
-        const [id, d] = k.split('-');
-        return { exerciseId: parseInt(id), date: d };
-      });
-      savePlannedExercises(plannedArray);
+      // In plan mode: toggle planned state for today
+      togglePlanned(exerciseId);
     } else {
       // In normal mode: open log dialog
       const exercise = exercises.find(e => e.id === exerciseId);
@@ -173,7 +65,7 @@ export default function Home() {
 
       if (response.ok) {
         setDialogState(null);
-        fetchData();
+        refetch();
       }
     } catch (error) {
       console.error('Error saving log:', error);
@@ -192,29 +84,11 @@ export default function Home() {
 
       if (response.ok) {
         setDialogState(null);
-        fetchData();
+        refetch();
       }
     } catch (error) {
       console.error('Error deleting log:', error);
     }
-  };
-
-  // Save settings
-  const handleSaveSettings = (newSettings: AppSettings) => {
-    saveSettings(newSettings);
-    setSettings(newSettings);
-  };
-
-  // Get day name from date
-  const getDayName = (dateStr: string) => {
-    const date = new Date(dateStr + 'T12:00:00'); // Add time to avoid timezone issues
-    return format(date, 'EE'); // Short day name (Mo, Tu, etc.)
-  };
-
-  // Get day number from date
-  const getDayNumber = (dateStr: string) => {
-    const date = new Date(dateStr + 'T12:00:00');
-    return format(date, 'd');
   };
 
   if (isLoading) {
@@ -227,102 +101,30 @@ export default function Home() {
 
   return (
     <div className="min-h-screen p-4 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          {/* Settings Button */}
-          <button
-            onClick={() => setShowSettings(true)}
-            className="text-gray-400 hover:text-gray-300"
-            title="Settings"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </button>
-          <h1 className="text-2xl font-bold">
-            Training<span className="text-blue-500">Log</span>
-          </h1>
-        </div>
-        <div className="flex items-center gap-4">
-          {/* Sort by Urgency Toggle */}
-          <button
-            onClick={() => setSortByUrgency(!sortByUrgency)}
-            className={`transition-colors ${sortByUrgency
-              ? 'text-blue-500 hover:text-blue-400'
-              : 'text-gray-400 hover:text-gray-300'
-              }`}
-            title={sortByUrgency ? 'Sorted by urgency' : 'Sort by urgency'}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
-          {/* Plan Mode Toggle */}
-          <button
-            onClick={() => setPlanMode(!planMode)}
-            className={`transition-colors ${planMode
-              ? 'text-blue-500 hover:text-blue-400'
-              : 'text-gray-400 hover:text-gray-300'
-              }`}
-            title={planMode ? 'Plan mode active' : 'Enable plan mode'}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-          </button>
-          {/* Manage Exercises Button */}
-          <button
-            onClick={() => setShowManage(!showManage)}
-            className="text-gray-400 hover:text-gray-300"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        sortByUrgency={sortByUrgency}
+        onSortToggle={() => setSortByUrgency(!sortByUrgency)}
+        planMode={planMode}
+        onPlanModeToggle={() => setPlanMode(!planMode)}
+        onSettingsClick={() => setShowSettings(true)}
+        onManageClick={() => setShowManage(!showManage)}
+      />
 
-      {/* Exercise Table */}
-      {exercises.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No exercises yet.</p>
-          <p className="text-gray-600 text-sm mt-2">Click the pencil button to add your first exercise.</p>
-        </div>
-      ) : (
-        <table className="w-full border-separate border-spacing-0">
-          <thead>
-            <tr>
-              <th className="text-left pb-2 pr-2"></th>
-              {dates.map((date) => (
-                <th key={date} className="text-center pb-2 px-1">
-                  <div className="text-xs text-gray-500 w-[30px] text-center">{getDayName(date)}</div>
-                  <div className="text-sm font-semibold text-gray-300 w-[30px] text-center">{getDayNumber(date)}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {exercises.map((exercise) => (
-              <ExerciseRow
-                key={exercise.id}
-                exercise={exercise}
-                dates={dates}
-                onToggle={handleToggle}
-                plannedExercises={plannedExercises}
-              />
-            ))}
-          </tbody>
-        </table>
-      )}
+      <ExerciseTable
+        exercises={exercises}
+        dates={dates}
+        getDayName={getDayName}
+        getDayNumber={getDayNumber}
+        onToggle={handleToggle}
+        plannedExercises={plannedExercises}
+      />
 
       {/* Manage Exercises Modal */}
       {showManage && (
         <ManageExercises
           exercises={exercises}
           onClose={() => setShowManage(false)}
-          onRefresh={fetchData}
+          onRefresh={refetch}
         />
       )}
 
@@ -343,7 +145,7 @@ export default function Home() {
       {showSettings && (
         <SettingsDialog
           currentSettings={settings}
-          onSave={handleSaveSettings}
+          onSave={updateSettings}
           onClose={() => setShowSettings(false)}
         />
       )}
