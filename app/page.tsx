@@ -1,11 +1,13 @@
 'use client';
 
-import ManageExercises from '@/components/ManageExercises';
+import ManageGoals from '@/components/ManageGoals';
+import ManageExercisesLibrary from '@/components/ManageExercisesLibrary';
+import EditGoalDialog from '@/components/EditGoalDialog';
 import LogDialog from '@/components/LogDialog';
 import SettingsDialog from '@/components/SettingsDialog';
 import PageHeader from '@/components/PageHeader';
 import GoalTable from '@/components/GoalTable';
-import { GoalLogEntry, Exercise } from '@/lib/types';
+import { GoalLogEntry, Exercise, Goal } from '@/lib/types';
 import { useSettings } from '@/lib/hooks/useSettings';
 import { usePlanMode } from '@/lib/hooks/usePlanMode';
 import { useDateRange } from '@/lib/hooks/useDateRange';
@@ -18,8 +20,10 @@ export default function Home() {
   const { dates, getDayName, getDayNumber } = useDateRange(settings.visibleDays);
   const { goals, isLoading, sortByUrgency, setSortByUrgency, refetch } = useGoals(settings.visibleDays);
 
-  const [showManage, setShowManage] = useState(false);
+  const [showManageGoals, setShowManageGoals] = useState(false);
+  const [showManageExercises, setShowManageExercises] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [dialogState, setDialogState] = useState<{
     goalId: number;
     goalName: string;
@@ -121,12 +125,39 @@ export default function Home() {
         plannedGoals={plannedGoals}
       />
 
-      {/* Manage Goals/Exercises Modal */}
-      {showManage && (
-        <ManageExercises
-          exercises={goals} // TODO: Rename this component to ManageGoals
-          onClose={() => setShowManage(false)}
+      {/* Manage Goals Modal */}
+      {showManageGoals && (
+        <ManageGoals
+          goals={goals}
+          onClose={() => setShowManageGoals(false)}
           onRefresh={refetch}
+          onEditGoal={(goal) => {
+            setEditingGoal(goal);
+            setShowManageGoals(false);
+          }}
+        />
+      )}
+
+      {/* Manage Exercises Library Modal */}
+      {showManageExercises && (
+        <ManageExercisesLibrary
+          onClose={() => setShowManageExercises(false)}
+          onRefresh={refetch}
+        />
+      )}
+
+      {/* Edit Goal Dialog */}
+      {editingGoal && (
+        <EditGoalDialog
+          goal={editingGoal}
+          onClose={() => {
+            setEditingGoal(null);
+            setShowManageGoals(true);
+          }}
+          onSave={() => {
+            setEditingGoal(null);
+            refetch();
+          }}
         />
       )}
 
@@ -152,7 +183,11 @@ export default function Home() {
           onClose={() => setShowSettings(false)}
           onManageGoals={() => {
             setShowSettings(false);
-            setShowManage(true);
+            setShowManageGoals(true);
+          }}
+          onManageExercises={() => {
+            setShowSettings(false);
+            setShowManageExercises(true);
           }}
         />
       )}
