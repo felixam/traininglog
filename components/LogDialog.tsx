@@ -21,7 +21,7 @@ interface HistoryData {
 }
 
 export default function LogDialog({
-  // goalId, // Not used internally but available via props
+  goalId,
   goalName,
   date,
   linkedExercises,
@@ -31,13 +31,38 @@ export default function LogDialog({
   onCancel,
 }: LogDialogProps) {
   const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(
-    existingLog?.exercise_id || (linkedExercises.length > 0 ? linkedExercises[0].id : null)
+    existingLog?.exercise_id || null
   );
   const [weight, setWeight] = useState<string>(existingLog?.weight?.toString() || '');
   const [reps, setReps] = useState<string>(existingLog?.reps?.toString() || '');
   const [history, setHistory] = useState<HistoryData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [lastExerciseFetched, setLastExerciseFetched] = useState(false);
+
+  // Fetch last used exercise for this goal on mount
+  useEffect(() => {
+    if (!existingLog && linkedExercises.length > 0) {
+      const fetchLastExercise = async () => {
+        try {
+          const response = await fetch(`/api/logs/last-exercise?goal_id=${goalId}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.exercise_id) {
+              setSelectedExerciseId(data.exercise_id);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching last exercise:', error);
+        } finally {
+          setLastExerciseFetched(true);
+        }
+      };
+      fetchLastExercise();
+    } else {
+      setLastExerciseFetched(true);
+    }
+  }, [goalId, linkedExercises.length, existingLog]);
 
   // Fetch history when selected exercise changes
   useEffect(() => {
@@ -55,10 +80,10 @@ export default function LogDialog({
           const data = await response.json();
           setHistory(data);
 
-          // Pre-fill with max weight if no existing log
-          if (!existingLog && data.maxWeight) {
-            setWeight(data.maxWeight.weight?.toString() || '');
-            setReps(data.maxWeight.reps?.toString() || '');
+          // Pre-fill with last log if no existing log
+          if (!existingLog && data.lastLog) {
+            setWeight(data.lastLog.weight?.toString() || '');
+            setReps(data.lastLog.reps?.toString() || '');
           }
         }
       } catch (error) {
