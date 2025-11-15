@@ -6,6 +6,7 @@ import LogDialog from '@/components/LogDialog';
 import SettingsDialog from '@/components/SettingsDialog';
 import { ExerciseWithLogs, LogEntry } from '@/lib/types';
 import { AppSettings, getSettings, saveSettings } from '@/lib/settings';
+import { getPlannedExercises, savePlannedExercises } from '@/lib/planMode';
 import { format, subDays } from 'date-fns';
 import { useEffect, useState } from 'react';
 
@@ -17,6 +18,8 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState<AppSettings>({ visibleDays: 7 });
   const [sortByUrgency, setSortByUrgency] = useState(false);
+  const [planMode, setPlanMode] = useState(false);
+  const [plannedExercises, setPlannedExercises] = useState<Set<string>>(new Set());
   const [dialogState, setDialogState] = useState<{
     exerciseId: number;
     exerciseName: string;
@@ -28,6 +31,20 @@ export default function Home() {
   useEffect(() => {
     const loadedSettings = getSettings();
     setSettings(loadedSettings);
+  }, []);
+
+  // Load planned exercises from localStorage on mount and clean up old dates
+  useEffect(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const planned = getPlannedExercises();
+    const todayOnly = planned.filter(p => p.date === today);
+
+    // Clean up old dates if needed
+    if (planned.length !== todayOnly.length) {
+      savePlannedExercises(todayOnly);
+    }
+
+    setPlannedExercises(new Set(todayOnly.map(p => `${p.exerciseId}-${p.date}`)));
   }, []);
 
   // Generate dates based on settings
@@ -101,18 +118,41 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortByUrgency]);
 
-  // Open log dialog
+  // Toggle handler - plan mode or log dialog
   const handleToggle = (exerciseId: number, date: string) => {
-    const exercise = exercises.find(e => e.id === exerciseId);
-    if (!exercise) return;
+    if (planMode) {
+      // In plan mode: always mark only today (last date), regardless of which box was clicked
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const key = `${exerciseId}-${today}`;
+      const newPlanned = new Set(plannedExercises);
 
-    const existingLog = exercise.logs[date];
-    setDialogState({
-      exerciseId,
-      exerciseName: exercise.name,
-      date,
-      existingLog,
-    });
+      if (newPlanned.has(key)) {
+        newPlanned.delete(key);
+      } else {
+        newPlanned.add(key);
+      }
+
+      setPlannedExercises(newPlanned);
+
+      // Save to localStorage
+      const plannedArray = Array.from(newPlanned).map(k => {
+        const [id, d] = k.split('-');
+        return { exerciseId: parseInt(id), date: d };
+      });
+      savePlannedExercises(plannedArray);
+    } else {
+      // In normal mode: open log dialog
+      const exercise = exercises.find(e => e.id === exerciseId);
+      if (!exercise) return;
+
+      const existingLog = exercise.logs[date];
+      setDialogState({
+        exerciseId,
+        exerciseName: exercise.name,
+        date,
+        existingLog,
+      });
+    }
   };
 
   // Save log from dialog
@@ -219,6 +259,19 @@ export default function Home() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </button>
+          {/* Plan Mode Toggle */}
+          <button
+            onClick={() => setPlanMode(!planMode)}
+            className={`transition-colors ${planMode
+              ? 'text-blue-500 hover:text-blue-400'
+              : 'text-gray-400 hover:text-gray-300'
+              }`}
+            title={planMode ? 'Plan mode active' : 'Enable plan mode'}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+          </button>
           {/* Manage Exercises Button */}
           <button
             onClick={() => setShowManage(!showManage)}
@@ -257,6 +310,7 @@ export default function Home() {
                 exercise={exercise}
                 dates={dates}
                 onToggle={handleToggle}
+                plannedExercises={plannedExercises}
               />
             ))}
           </tbody>

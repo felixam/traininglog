@@ -6,28 +6,37 @@ interface ExerciseRowProps {
   exercise: Exercise & { logs: Record<string, LogEntry> };
   dates: string[];
   onToggle: (exerciseId: number, date: string) => void;
+  plannedExercises?: Set<string>;
 }
 
 const colorClasses = {
   red: {
     active: 'bg-red-500',
-    inactive: 'bg-red-950/50 border border-red-900/30',
+    inactiveBg: 'bg-red-950/50',
+    inactiveBorder: 'border border-red-900/30',
+    plannedBorder: 'border-4 border-red-500',
   },
   yellow: {
     active: 'bg-yellow-500',
-    inactive: 'bg-yellow-950/50 border border-yellow-900/30',
+    inactiveBg: 'bg-yellow-950/50',
+    inactiveBorder: 'border border-yellow-900/30',
+    plannedBorder: 'border-4 border-yellow-500',
   },
   green: {
     active: 'bg-green-500',
-    inactive: 'bg-green-950/50 border border-green-900/30',
+    inactiveBg: 'bg-green-950/50',
+    inactiveBorder: 'border border-green-900/30',
+    plannedBorder: 'border-4 border-green-500',
   },
   blue: {
     active: 'bg-blue-500',
-    inactive: 'bg-blue-950/50 border border-blue-900/30',
+    inactiveBg: 'bg-blue-950/50',
+    inactiveBorder: 'border border-blue-900/30',
+    plannedBorder: 'border-4 border-blue-500',
   },
 };
 
-export default function ExerciseRow({ exercise, dates, onToggle }: ExerciseRowProps) {
+export default function ExerciseRow({ exercise, dates, onToggle, plannedExercises }: ExerciseRowProps) {
   const colors = colorClasses[exercise.color] || colorClasses.red;
 
   return (
@@ -41,13 +50,27 @@ export default function ExerciseRow({ exercise, dates, onToggle }: ExerciseRowPr
       {dates.map((date) => {
         const log = exercise.logs[date];
         const isCompleted = log?.completed || false;
+        const isPlanned = plannedExercises?.has(`${exercise.id}-${date}`);
+
+        // Determine cell style based on completed and planned state
+        let cellStyle;
+        if (isCompleted) {
+          // Completed: use active background, optionally with planned border
+          cellStyle = isPlanned
+            ? `${colors.active} text-white ${colors.plannedBorder}`
+            : `${colors.active} text-white`;
+        } else {
+          // Not completed: use inactive background with appropriate border
+          cellStyle = isPlanned
+            ? `${colors.inactiveBg} ${colors.plannedBorder}`
+            : `${colors.inactiveBg} ${colors.inactiveBorder}`;
+        }
 
         return (
           <td key={date} className="px-1 py-1">
             <button
               onClick={() => onToggle(exercise.id, date)}
-              className={`w-full aspect-square rounded-lg transition-all text-[0.6rem] leading-tight flex flex-col items-center justify-center ${isCompleted ? `${colors.active} text-white` : colors.inactive
-                }`}
+              className={`w-full aspect-square rounded-lg transition-all text-[0.6rem] leading-tight flex flex-col items-center justify-center ${cellStyle}`}
               aria-label={`Log ${exercise.name} for ${date}`}
             >
               {isCompleted ? (
