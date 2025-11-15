@@ -11,28 +11,28 @@ interface GoalRowProps {
 
 const colorClasses = {
   red: {
-    active: 'bg-red-500',
+    active: 'bg-red-500/70',
     inactiveBg: 'bg-red-950/50',
     inactiveBorder: 'border border-red-900/30',
-    plannedBorder: 'border-4 border-red-500',
+    plannedBorder: 'border-4 border-red-500/70',
   },
   yellow: {
-    active: 'bg-yellow-500',
+    active: 'bg-yellow-500/80',
     inactiveBg: 'bg-yellow-950/50',
     inactiveBorder: 'border border-yellow-900/30',
-    plannedBorder: 'border-4 border-yellow-500',
+    plannedBorder: 'border-4 border-yellow-500/80',
   },
   green: {
-    active: 'bg-green-500',
+    active: 'bg-green-500/70',
     inactiveBg: 'bg-green-950/50',
     inactiveBorder: 'border border-green-900/30',
-    plannedBorder: 'border-4 border-green-500',
+    plannedBorder: 'border-4 border-green-500/70',
   },
   blue: {
-    active: 'bg-blue-500',
+    active: 'bg-blue-500/70',
     inactiveBg: 'bg-blue-950/50',
     inactiveBorder: 'border border-blue-900/30',
-    plannedBorder: 'border-4 border-blue-500',
+    plannedBorder: 'border-4 border-blue-500/70',
   },
 };
 
