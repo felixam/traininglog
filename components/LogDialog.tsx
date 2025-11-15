@@ -90,10 +90,10 @@ export default function LogDialog({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-lg max-w-md w-full p-6" onKeyDown={handleKeyDown}>
+    <div className="fixed inset-0 bg-black/50 flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-gray-900 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 mt-4 sm:mt-0" onKeyDown={handleKeyDown}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
             <h2 className="text-xl font-bold">{exerciseName}</h2>
             <p className="text-sm text-gray-400">{new Date(date + 'T12:00:00').toLocaleDateString()}</p>
@@ -111,7 +111,7 @@ export default function LogDialog({
 
         {/* History Info */}
         {!isLoading && history && (history.maxWeight || history.lastLog) && (
-          <div className="mb-4 p-3 bg-gray-800 rounded-lg text-sm space-y-2">
+          <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-gray-800 rounded-lg text-xs sm:text-sm space-y-1.5 sm:space-y-2">
             {history.maxWeight && (
               <div className="flex items-center justify-between gap-3">
                 <div className="text-gray-400">
@@ -154,17 +154,18 @@ export default function LogDialog({
         )}
 
         {/* Input Fields */}
-        <div className="space-y-4 mb-6">
+        <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
           <div>
             <label className="block text-sm text-gray-400 mb-1">Weight (kg)</label>
             <input
               type="number"
+              inputMode="decimal"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               placeholder="e.g., 80"
               step="0.5"
               min="0"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 text-base bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
               autoFocus
               disabled={isSaving}
             />
@@ -173,12 +174,13 @@ export default function LogDialog({
             <label className="block text-sm text-gray-400 mb-1">Reps</label>
             <input
               type="number"
+              inputMode="numeric"
               value={reps}
               onChange={(e) => setReps(e.target.value)}
               placeholder="e.g., 10"
               min="0"
               step="1"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 text-base bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
               disabled={isSaving}
             />
           </div>
@@ -190,7 +192,7 @@ export default function LogDialog({
             <button
               onClick={onDelete}
               disabled={isSaving}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors"
+              className="px-3 sm:px-4 py-2.5 sm:py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors text-base"
             >
               Delete
             </button>
@@ -198,14 +200,14 @@ export default function LogDialog({
           <button
             onClick={onCancel}
             disabled={isSaving}
-            className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-gray-300 rounded-lg font-medium transition-colors"
+            className="flex-1 px-3 sm:px-4 py-2.5 sm:py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-gray-300 rounded-lg font-medium transition-colors text-base"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors"
+            className="flex-1 px-3 sm:px-4 py-2.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors text-base"
           >
             {isSaving ? 'Saving...' : 'Save'}
           </button>
