@@ -110,7 +110,6 @@ export default function Home() {
         planMode={planMode}
         onPlanModeToggle={() => setPlanMode(!planMode)}
         onSettingsClick={() => setShowSettings(true)}
-        onManageClick={() => setShowManage(!showManage)}
       />
 
       <GoalTable
@@ -151,6 +150,10 @@ export default function Home() {
           currentSettings={settings}
           onSave={updateSettings}
           onClose={() => setShowSettings(false)}
+          onManageGoals={() => {
+            setShowSettings(false);
+            setShowManage(true);
+          }}
         />
       )}
     </div>

@@ -7,12 +7,14 @@ interface SettingsDialogProps {
   currentSettings: AppSettings;
   onSave: (settings: AppSettings) => void;
   onClose: () => void;
+  onManageGoals: () => void;
 }
 
 export default function SettingsDialog({
   currentSettings,
   onSave,
   onClose,
+  onManageGoals,
 }: SettingsDialogProps) {
   const [visibleDays, setVisibleDays] = useState(currentSettings.visibleDays.toString());
 
@@ -68,6 +70,19 @@ export default function SettingsDialog({
             <p className="text-xs text-gray-500 mt-1">
               Number of days to display in the training log (1-30)
             </p>
+          </div>
+
+          {/* Manage Goals Button */}
+          <div className="pt-2">
+            <button
+              onClick={onManageGoals}
+              className="w-full px-4 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 text-gray-300 rounded-lg transition-colors flex items-center gap-3"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <span>Manage Goals</span>
+            </button>
           </div>
         </div>
 
