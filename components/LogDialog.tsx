@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Exercise, GoalLogEntry } from '@/lib/types';
 import { format } from 'date-fns';
-import { GoalLogEntry, Exercise } from '@/lib/types';
+import { useEffect, useState } from 'react';
 
 interface LogDialogProps {
   goalId: number;
@@ -133,8 +133,15 @@ export default function LogDialog({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-gray-900 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 mt-4 sm:mt-0" onKeyDown={handleKeyDown}>
+    <div
+      className="fixed inset-0 bg-black/50 flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-gray-900 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 mt-4 sm:mt-0"
+        onKeyDown={handleKeyDown}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
@@ -281,7 +288,7 @@ export default function LogDialog({
             <button
               onClick={handleCompleteDirectly}
               disabled={isSaving}
-              className="flex-1 px-3 sm:px-4 py-2.5 sm:py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors text-base"
+              className="flex-1 px-3 sm:px-4 py-2.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors text-base"
             >
               {isSaving ? 'Completing...' : 'Complete'}
             </button>
