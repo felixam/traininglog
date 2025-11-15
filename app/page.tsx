@@ -2,7 +2,8 @@
 
 import ManageExercises from '@/components/ManageExercises';
 import ExerciseRow from '@/components/ExerciseRow';
-import { ExerciseWithLogs } from '@/lib/types';
+import LogDialog from '@/components/LogDialog';
+import { ExerciseWithLogs, LogEntry } from '@/lib/types';
 import { format, subDays } from 'date-fns';
 import { useEffect, useState } from 'react';
 
@@ -12,6 +13,12 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [showManage, setShowManage] = useState(false);
   const [sortByUrgency, setSortByUrgency] = useState(false);
+  const [dialogState, setDialogState] = useState<{
+    exerciseId: number;
+    exerciseName: string;
+    date: string;
+    existingLog?: LogEntry;
+  } | null>(null);
 
   // Generate last 7 days
   useEffect(() => {
@@ -33,8 +40,8 @@ export default function Home() {
         // Find the most recent completed date for each exercise
         const getLastCompletedDate = (exercise: ExerciseWithLogs) => {
           const completedDates = Object.entries(exercise.logs)
-            .filter(([_, completed]) => completed)
-            .map(([date, _]) => date)
+            .filter(([, log]) => log.completed)
+            .map(([date]) => date)
             .sort()
             .reverse();
           return completedDates[0] || ''; // Return empty string if never completed
@@ -71,6 +78,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Re-sort exercises when sort mode changes
@@ -78,23 +86,64 @@ export default function Home() {
     if (exercises.length > 0) {
       setExercises(prev => sortExercises(prev, sortByUrgency));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortByUrgency]);
 
-  // Toggle exercise completion
-  const handleToggle = async (exerciseId: number, date: string) => {
+  // Open log dialog
+  const handleToggle = (exerciseId: number, date: string) => {
+    const exercise = exercises.find(e => e.id === exerciseId);
+    if (!exercise) return;
+
+    const existingLog = exercise.logs[date];
+    setDialogState({
+      exerciseId,
+      exerciseName: exercise.name,
+      date,
+      existingLog,
+    });
+  };
+
+  // Save log from dialog
+  const handleSaveLog = async (weight?: number, reps?: number) => {
+    if (!dialogState) return;
+
     try {
       const response = await fetch('/api/logs/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ exercise_id: exerciseId, date }),
+        body: JSON.stringify({
+          exercise_id: dialogState.exerciseId,
+          date: dialogState.date,
+          weight,
+          reps,
+        }),
       });
 
       if (response.ok) {
-        // Refresh data
+        setDialogState(null);
         fetchData();
       }
     } catch (error) {
-      console.error('Error toggling exercise:', error);
+      console.error('Error saving log:', error);
+    }
+  };
+
+  // Delete log from dialog
+  const handleDeleteLog = async () => {
+    if (!dialogState) return;
+
+    try {
+      const response = await fetch(
+        `/api/logs/toggle?exercise_id=${dialogState.exerciseId}&date=${dialogState.date}`,
+        { method: 'DELETE' }
+      );
+
+      if (response.ok) {
+        setDialogState(null);
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error deleting log:', error);
     }
   };
 
@@ -132,7 +181,7 @@ export default function Home() {
           <button
             onClick={() => setSortByUrgency(!sortByUrgency)}
             className={`transition-colors ${sortByUrgency
-              ? 'text-purple-500 hover:text-purple-400'
+              ? 'text-blue-500 hover:text-blue-400'
               : 'text-gray-400 hover:text-gray-300'
               }`}
             title={sortByUrgency ? 'Sorted by urgency' : 'Sort by urgency'}
@@ -191,6 +240,19 @@ export default function Home() {
           exercises={exercises}
           onClose={() => setShowManage(false)}
           onRefresh={fetchData}
+        />
+      )}
+
+      {/* Log Entry Dialog */}
+      {dialogState && (
+        <LogDialog
+          exerciseId={dialogState.exerciseId}
+          exerciseName={dialogState.exerciseName}
+          date={dialogState.date}
+          existingLog={dialogState.existingLog}
+          onSave={handleSaveLog}
+          onDelete={dialogState.existingLog ? handleDeleteLog : undefined}
+          onCancel={() => setDialogState(null)}
         />
       )}
     </div>

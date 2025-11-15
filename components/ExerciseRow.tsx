@@ -1,9 +1,9 @@
 'use client';
 
-import { Exercise } from '@/lib/types';
+import { Exercise, LogEntry } from '@/lib/types';
 
 interface ExerciseRowProps {
-  exercise: Exercise & { logs: Record<string, boolean> };
+  exercise: Exercise & { logs: Record<string, LogEntry> };
   dates: string[];
   onToggle: (exerciseId: number, date: string) => void;
 }
@@ -37,17 +37,35 @@ export default function ExerciseRow({ exercise, dates, onToggle }: ExerciseRowPr
         <div className="truncate">{exercise.name}</div>
       </td>
 
-      {/* Day checkboxes */}
+      {/* Day cells with weight/reps */}
       {dates.map((date) => {
-        const isCompleted = exercise.logs[date] || false;
+        const log = exercise.logs[date];
+        const isCompleted = log?.completed || false;
+
         return (
           <td key={date} className="px-1 py-1">
             <button
               onClick={() => onToggle(exercise.id, date)}
-              className={`w-full aspect-square rounded-lg transition-all ${isCompleted ? colors.active : colors.inactive
-                }`}
-              aria-label={`Toggle ${exercise.name} for ${date}`}
-            />
+              className={`w-full aspect-square rounded-lg transition-all text-[0.6rem] leading-tight flex flex-col items-center justify-center ${
+                isCompleted ? `${colors.active} text-white` : colors.inactive
+              }`}
+              aria-label={`Log ${exercise.name} for ${date}`}
+            >
+              {isCompleted ? (
+                log?.weight && log?.reps ? (
+                  <>
+                    <div>{log.weight % 1 === 0 ? Math.floor(log.weight) : log.weight}</div>
+                    <div>{log.reps}</div>
+                  </>
+                ) : log?.weight ? (
+                  <div>{log.weight % 1 === 0 ? Math.floor(log.weight) : log.weight}</div>
+                ) : log?.reps ? (
+                  <div>{log.reps}</div>
+                ) : (
+                  <div>✓</div>
+                )
+              ) : null}
+            </button>
           </td>
         );
       })}

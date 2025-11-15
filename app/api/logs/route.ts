@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { format, subDays } from 'date-fns';
+import { LogEntry } from '@/lib/types';
 
 // GET logs for the last 7 days
 export async function GET() {
@@ -16,14 +17,14 @@ export async function GET() {
     );
 
     const logsResult = await query(
-      `SELECT exercise_id, date, completed
+      `SELECT exercise_id, date, completed, weight, reps
        FROM exercise_logs
        WHERE date >= $1 AND date <= $2`,
       [startDate, endDate]
     );
 
     // Transform logs into a map for easier lookup
-    const logsMap: Record<number, Record<string, boolean>> = {};
+    const logsMap: Record<number, Record<string, LogEntry>> = {};
 
     logsResult.rows.forEach((log) => {
       if (!logsMap[log.exercise_id]) {
@@ -33,7 +34,11 @@ export async function GET() {
       const dateStr = log.date instanceof Date
         ? format(log.date, 'yyyy-MM-dd')
         : log.date;
-      logsMap[log.exercise_id][dateStr] = log.completed;
+      logsMap[log.exercise_id][dateStr] = {
+        completed: log.completed,
+        weight: log.weight,
+        reps: log.reps,
+      };
     });
 
     // Combine exercises with their logs

@@ -13,10 +13,18 @@ export interface ExerciseLog {
   exercise_id: number;
   date: string; // YYYY-MM-DD format
   completed: boolean;
+  weight?: number; // Weight in kg
+  reps?: number; // Number of repetitions
   created_at: Date;
   updated_at: Date;
 }
 
+export interface LogEntry {
+  completed: boolean;
+  weight?: number;
+  reps?: number;
+}
+
 export interface ExerciseWithLogs extends Exercise {
-  logs: Record<string, boolean>; // date -> completed mapping
+  logs: Record<string, LogEntry>; // date -> log entry mapping
 }

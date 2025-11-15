@@ -153,7 +153,7 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
                 value={newExerciseName}
                 onChange={(e) => setNewExerciseName(e.target.value)}
                 placeholder="e.g., Biceps"
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 maxLength={50}
               />
             </div>
@@ -179,7 +179,7 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
             <button
               type="submit"
               disabled={isAdding || !newExerciseName.trim()}
-              className="w-full py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors"
+              className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors"
             >
               {isAdding ? 'Adding...' : 'Add Exercise'}
             </button>
@@ -218,7 +218,7 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
                           if (e.key === 'Enter') saveEdit(exercise.id);
                           if (e.key === 'Escape') cancelEditing();
                         }}
-                        className="flex-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-purple-500"
+                        className="flex-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
                         autoFocus
                         maxLength={50}
                       />

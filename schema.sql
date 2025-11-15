@@ -9,12 +9,14 @@ CREATE TABLE IF NOT EXISTS exercises (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Exercise logs table: tracks daily completion
+-- Exercise logs table: tracks daily completion with weight and reps
 CREATE TABLE IF NOT EXISTS exercise_logs (
   id SERIAL PRIMARY KEY,
   exercise_id INTEGER NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
   date DATE NOT NULL,
   completed BOOLEAN NOT NULL DEFAULT false,
+  weight DECIMAL(6, 2), -- Weight in kg (e.g., 82.5)
+  reps INTEGER, -- Number of repetitions
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(exercise_id, date)

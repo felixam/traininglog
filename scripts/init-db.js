@@ -26,6 +26,21 @@ async function initDatabase() {
     console.log('📝 Running schema...');
     await pool.query(schema);
 
+    // Run migrations for existing databases
+    console.log('🔄 Running migrations...');
+
+    // Migration: Add weight and reps columns if they don't exist
+    try {
+      await pool.query(`
+        ALTER TABLE exercise_logs
+        ADD COLUMN IF NOT EXISTS weight DECIMAL(6, 2),
+        ADD COLUMN IF NOT EXISTS reps INTEGER;
+      `);
+      console.log('✅ Migration: Added weight and reps columns');
+    } catch (migrationError) {
+      console.log('ℹ️  Migration note:', migrationError.message);
+    }
+
     console.log('✅ Database initialized successfully!');
     console.log('🎉 Your training log is ready to use!');
   } catch (error) {
