@@ -4,51 +4,53 @@ import ManageExercises from '@/components/ManageExercises';
 import LogDialog from '@/components/LogDialog';
 import SettingsDialog from '@/components/SettingsDialog';
 import PageHeader from '@/components/PageHeader';
-import ExerciseTable from '@/components/ExerciseTable';
-import { LogEntry } from '@/lib/types';
+import GoalTable from '@/components/GoalTable';
+import { GoalLogEntry, Exercise } from '@/lib/types';
 import { useSettings } from '@/lib/hooks/useSettings';
 import { usePlanMode } from '@/lib/hooks/usePlanMode';
 import { useDateRange } from '@/lib/hooks/useDateRange';
-import { useExercises } from '@/lib/hooks/useExercises';
+import { useGoals } from '@/lib/hooks/useGoals';
 import { useState } from 'react';
 
 export default function Home() {
   const { settings, updateSettings } = useSettings();
-  const { planMode, setPlanMode, plannedExercises, togglePlanned } = usePlanMode();
+  const { planMode, setPlanMode, plannedGoals, togglePlanned } = usePlanMode();
   const { dates, getDayName, getDayNumber } = useDateRange(settings.visibleDays);
-  const { exercises, isLoading, sortByUrgency, setSortByUrgency, refetch } = useExercises(settings.visibleDays);
+  const { goals, isLoading, sortByUrgency, setSortByUrgency, refetch } = useGoals(settings.visibleDays);
 
   const [showManage, setShowManage] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [dialogState, setDialogState] = useState<{
-    exerciseId: number;
-    exerciseName: string;
+    goalId: number;
+    goalName: string;
     date: string;
-    existingLog?: LogEntry;
+    linkedExercises: Exercise[];
+    existingLog?: GoalLogEntry;
   } | null>(null);
 
   // Toggle handler - plan mode or log dialog
-  const handleToggle = (exerciseId: number, date: string) => {
+  const handleToggle = (goalId: number, date: string) => {
     if (planMode) {
       // In plan mode: toggle planned state for today
-      togglePlanned(exerciseId);
+      togglePlanned(goalId);
     } else {
       // In normal mode: open log dialog
-      const exercise = exercises.find(e => e.id === exerciseId);
-      if (!exercise) return;
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) return;
 
-      const existingLog = exercise.logs[date];
+      const existingLog = goal.logs[date];
       setDialogState({
-        exerciseId,
-        exerciseName: exercise.name,
+        goalId,
+        goalName: goal.name,
         date,
+        linkedExercises: goal.linkedExercises || [],
         existingLog,
       });
     }
   };
 
   // Save log from dialog
-  const handleSaveLog = async (weight?: number, reps?: number) => {
+  const handleSaveLog = async (exerciseId?: number, weight?: number, reps?: number) => {
     if (!dialogState) return;
 
     try {
@@ -56,8 +58,9 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          exercise_id: dialogState.exerciseId,
+          goal_id: dialogState.goalId,
           date: dialogState.date,
+          exercise_id: exerciseId,
           weight,
           reps,
         }),
@@ -78,7 +81,7 @@ export default function Home() {
 
     try {
       const response = await fetch(
-        `/api/logs/toggle?exercise_id=${dialogState.exerciseId}&date=${dialogState.date}`,
+        `/api/logs/toggle?goal_id=${dialogState.goalId}&date=${dialogState.date}`,
         { method: 'DELETE' }
       );
 
@@ -110,19 +113,19 @@ export default function Home() {
         onManageClick={() => setShowManage(!showManage)}
       />
 
-      <ExerciseTable
-        exercises={exercises}
+      <GoalTable
+        goals={goals}
         dates={dates}
         getDayName={getDayName}
         getDayNumber={getDayNumber}
         onToggle={handleToggle}
-        plannedExercises={plannedExercises}
+        plannedGoals={plannedGoals}
       />
 
-      {/* Manage Exercises Modal */}
+      {/* Manage Goals/Exercises Modal */}
       {showManage && (
         <ManageExercises
-          exercises={exercises}
+          exercises={goals} // TODO: Rename this component to ManageGoals
           onClose={() => setShowManage(false)}
           onRefresh={refetch}
         />
@@ -131,9 +134,10 @@ export default function Home() {
       {/* Log Entry Dialog */}
       {dialogState && (
         <LogDialog
-          exerciseId={dialogState.exerciseId}
-          exerciseName={dialogState.exerciseName}
+          goalId={dialogState.goalId}
+          goalName={dialogState.goalName}
           date={dialogState.date}
+          linkedExercises={dialogState.linkedExercises}
           existingLog={dialogState.existingLog}
           onSave={handleSaveLog}
           onDelete={dialogState.existingLog ? handleDeleteLog : undefined}

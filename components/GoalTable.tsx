@@ -1,28 +1,28 @@
-import { ExerciseWithLogs } from '@/lib/types';
-import ExerciseRow from './ExerciseRow';
+import { GoalWithLogs } from '@/lib/types';
+import GoalRow from './GoalRow';
 
-interface ExerciseTableProps {
-  exercises: ExerciseWithLogs[];
+interface GoalTableProps {
+  goals: GoalWithLogs[];
   dates: string[];
   getDayName: (date: string) => string;
   getDayNumber: (date: string) => string;
-  onToggle: (exerciseId: number, date: string) => void;
-  plannedExercises: Set<string>;
+  onToggle: (goalId: number, date: string) => void;
+  plannedGoals: Set<string>;
 }
 
-export default function ExerciseTable({
-  exercises,
+export default function GoalTable({
+  goals,
   dates,
   getDayName,
   getDayNumber,
   onToggle,
-  plannedExercises,
-}: ExerciseTableProps) {
-  if (exercises.length === 0) {
+  plannedGoals,
+}: GoalTableProps) {
+  if (goals.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">No exercises yet.</p>
-        <p className="text-gray-600 text-sm mt-2">Click the pencil button to add your first exercise.</p>
+        <p className="text-gray-500">No goals yet.</p>
+        <p className="text-gray-600 text-sm mt-2">Click the pencil button to add your first goal.</p>
       </div>
     );
   }
@@ -41,13 +41,13 @@ export default function ExerciseTable({
         </tr>
       </thead>
       <tbody>
-        {exercises.map((exercise) => (
-          <ExerciseRow
-            key={exercise.id}
-            exercise={exercise}
+        {goals.map((goal) => (
+          <GoalRow
+            key={goal.id}
+            goal={goal}
             dates={dates}
             onToggle={onToggle}
-            plannedExercises={plannedExercises}
+            plannedGoals={plannedGoals}
           />
         ))}
       </tbody>

@@ -9,36 +9,18 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, color, display_order } = body;
+    const { name } = body;
 
-    const updates: string[] = [];
-    const values: (string | number)[] = [];
-    let paramCount = 1;
-
-    if (name !== undefined) {
-      updates.push(`name = $${paramCount++}`);
-      values.push(name);
-    }
-    if (color !== undefined) {
-      updates.push(`color = $${paramCount++}`);
-      values.push(color);
-    }
-    if (display_order !== undefined) {
-      updates.push(`display_order = $${paramCount++}`);
-      values.push(display_order);
-    }
-
-    if (updates.length === 0) {
+    if (!name) {
       return NextResponse.json(
-        { error: 'No fields to update' },
+        { error: 'Name is required' },
         { status: 400 }
       );
     }
 
-    values.push(id);
     const result = await query(
-      `UPDATE exercises SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
-      values
+      'UPDATE exercises SET name = $1 WHERE id = $2 RETURNING *',
+      [name, id]
     );
 
     if (result.rows.length === 0) {

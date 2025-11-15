@@ -1,10 +1,10 @@
 'use client';
 
-import { Exercise, ExerciseColor } from '@/lib/types';
+import { Goal, ExerciseColor } from '@/lib/types';
 import { useState } from 'react';
 
 interface ManageExercisesProps {
-  exercises: Exercise[];
+  exercises: Goal[]; // TODO: Rename to 'goals'
   onClose: () => void;
   onRefresh: () => void;
 }
@@ -29,7 +29,7 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
 
     setIsAdding(true);
     try {
-      const response = await fetch('/api/exercises', {
+      const response = await fetch('/api/goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -51,10 +51,10 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
   };
 
   const handleDeleteExercise = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this exercise?')) return;
+    if (!confirm('Are you sure you want to delete this goal?')) return;
 
     try {
-      const response = await fetch(`/api/exercises/${id}`, {
+      const response = await fetch(`/api/goals/${id}`, {
         method: 'DELETE',
       });
 
@@ -77,12 +77,12 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
     try {
       // Swap display_order values
       await Promise.all([
-        fetch(`/api/exercises/${currentExercise.id}`, {
+        fetch(`/api/goals/${currentExercise.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ display_order: targetExercise.display_order }),
         }),
-        fetch(`/api/exercises/${targetExercise.id}`, {
+        fetch(`/api/goals/${targetExercise.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ display_order: currentExercise.display_order }),
@@ -112,7 +112,7 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
     }
 
     try {
-      const response = await fetch(`/api/exercises/${id}`, {
+      const response = await fetch(`/api/goals/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editingName.trim() }),
@@ -132,7 +132,7 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
       <div className="bg-gray-900 rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h2 className="text-xl font-bold">Manage Exercises</h2>
+          <h2 className="text-xl font-bold">Manage Goals</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-300"
@@ -143,16 +143,16 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
           </button>
         </div>
 
-        {/* Add Exercise Form */}
+        {/* Add Goal Form */}
         <div className="p-4 border-b border-gray-800">
           <form onSubmit={handleAddExercise} className="space-y-3">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Exercise Name</label>
+              <label className="block text-sm text-gray-400 mb-1">Goal Name</label>
               <input
                 type="text"
                 value={newExerciseName}
                 onChange={(e) => setNewExerciseName(e.target.value)}
-                placeholder="e.g., Biceps"
+                placeholder="e.g., Chest"
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 maxLength={50}
               />
@@ -180,16 +180,16 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
               disabled={isAdding || !newExerciseName.trim()}
               className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors"
             >
-              {isAdding ? 'Adding...' : 'Add Exercise'}
+              {isAdding ? 'Adding...' : 'Add Goal'}
             </button>
           </form>
         </div>
 
-        {/* Exercises List */}
+        {/* Goals List */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-2">
             {exercises.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">No exercises yet</p>
+              <p className="text-center text-gray-500 py-8">No goals yet</p>
             ) : (
               exercises.map((exercise, index) => (
                 <div

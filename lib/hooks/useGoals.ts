@@ -1,25 +1,25 @@
 import { useEffect, useState } from 'react';
-import { ExerciseWithLogs } from '../types';
-import { sortExercises } from '../exerciseUtils';
+import { GoalWithLogs } from '../types';
+import { sortGoals } from '../goalUtils';
 
 /**
- * Hook to manage exercises data fetching and sorting
+ * Hook to manage goals data fetching and sorting
  */
-export function useExercises(visibleDays: number) {
-  const [exercises, setExercises] = useState<ExerciseWithLogs[]>([]);
+export function useGoals(visibleDays: number) {
+  const [goals, setGoals] = useState<GoalWithLogs[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sortByUrgency, setSortByUrgency] = useState(false);
 
-  // Fetch exercises and logs from API
+  // Fetch goals and logs from API
   const fetchData = async () => {
     try {
       const response = await fetch(`/api/logs?days=${visibleDays}`);
       const data = await response.json();
-      const sorted = sortExercises(data.exercises || [], sortByUrgency);
-      setExercises(sorted);
+      const sorted = sortGoals(data.exercises || [], sortByUrgency); // API still uses 'exercises' key for compatibility
+      setGoals(sorted);
     } catch (error) {
       console.error('Error fetching data:', error);
-      setExercises([]);
+      setGoals([]);
     } finally {
       setIsLoading(false);
     }
@@ -33,16 +33,16 @@ export function useExercises(visibleDays: number) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleDays]);
 
-  // Re-sort exercises when sort mode changes
+  // Re-sort goals when sort mode changes
   useEffect(() => {
-    if (exercises.length > 0) {
-      setExercises(prev => sortExercises(prev, sortByUrgency));
+    if (goals.length > 0) {
+      setGoals(prev => sortGoals(prev, sortByUrgency));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortByUrgency]);
 
   return {
-    exercises,
+    goals,
     isLoading,
     sortByUrgency,
     setSortByUrgency,

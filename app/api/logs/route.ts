@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { format, subDays } from 'date-fns';
-import { LogEntry } from '@/lib/types';
+import { GoalLogEntry, Exercise } from '@/lib/types';
 
 // GET logs for the last N days (default 7)
 export async function GET(request: Request) {
@@ -16,44 +16,75 @@ export async function GET(request: Request) {
     const startDate = format(subDays(today, days - 1), 'yyyy-MM-dd');
     const endDate = format(today, 'yyyy-MM-dd');
 
-    // Fetch all exercises and their logs for the last 7 days
-    const exercisesResult = await query(
-      'SELECT * FROM exercises ORDER BY display_order ASC'
+    // Fetch all goals
+    const goalsResult = await query(
+      'SELECT * FROM goals ORDER BY display_order ASC'
     );
 
+    // Fetch goal logs for the date range, including weight/reps from exercise_logs if available
     const logsResult = await query(
-      `SELECT exercise_id, date, completed, weight, reps
-       FROM exercise_logs
-       WHERE date >= $1 AND date <= $2`,
+      `SELECT
+         gl.goal_id,
+         gl.date,
+         gl.completed,
+         gl.exercise_id,
+         el.weight,
+         el.reps
+       FROM goal_logs gl
+       LEFT JOIN exercise_logs el ON gl.exercise_id = el.exercise_id AND gl.date = el.date
+       WHERE gl.date >= $1 AND gl.date <= $2`,
       [startDate, endDate]
     );
 
+    // Fetch linked exercises for each goal
+    const linkedExercisesResult = await query(
+      `SELECT ge.goal_id, e.id, e.name, e.created_at
+       FROM goal_exercises ge
+       INNER JOIN exercises e ON ge.exercise_id = e.id
+       ORDER BY e.name ASC`
+    );
+
+    // Transform linked exercises into a map
+    const linkedExercisesMap: Record<number, Exercise[]> = {};
+    linkedExercisesResult.rows.forEach((row) => {
+      if (!linkedExercisesMap[row.goal_id]) {
+        linkedExercisesMap[row.goal_id] = [];
+      }
+      linkedExercisesMap[row.goal_id].push({
+        id: row.id,
+        name: row.name,
+        created_at: row.created_at,
+      });
+    });
+
     // Transform logs into a map for easier lookup
-    const logsMap: Record<number, Record<string, LogEntry>> = {};
+    const logsMap: Record<number, Record<string, GoalLogEntry>> = {};
 
     logsResult.rows.forEach((log) => {
-      if (!logsMap[log.exercise_id]) {
-        logsMap[log.exercise_id] = {};
+      if (!logsMap[log.goal_id]) {
+        logsMap[log.goal_id] = {};
       }
       // Convert date to string format (YYYY-MM-DD)
       const dateStr = log.date instanceof Date
         ? format(log.date, 'yyyy-MM-dd')
         : log.date;
-      logsMap[log.exercise_id][dateStr] = {
+      logsMap[log.goal_id][dateStr] = {
         completed: log.completed,
+        exercise_id: log.exercise_id,
         weight: log.weight,
         reps: log.reps,
       };
     });
 
-    // Combine exercises with their logs
-    const exercisesWithLogs = exercisesResult.rows.map((exercise) => ({
-      ...exercise,
-      logs: logsMap[exercise.id] || {},
+    // Combine goals with their logs and linked exercises
+    const goalsWithLogs = goalsResult.rows.map((goal) => ({
+      ...goal,
+      logs: logsMap[goal.id] || {},
+      linkedExercises: linkedExercisesMap[goal.id] || [],
     }));
 
     return NextResponse.json({
-      exercises: exercisesWithLogs,
+      exercises: goalsWithLogs, // Keep old property name for backward compatibility temporarily
       dateRange: { startDate, endDate },
     });
   } catch (error) {

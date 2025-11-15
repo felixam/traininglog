@@ -1,12 +1,12 @@
 'use client';
 
-import { Exercise, LogEntry } from '@/lib/types';
+import { Goal, GoalLogEntry } from '@/lib/types';
 
-interface ExerciseRowProps {
-  exercise: Exercise & { logs: Record<string, LogEntry> };
+interface GoalRowProps {
+  goal: Goal & { logs: Record<string, GoalLogEntry> };
   dates: string[];
-  onToggle: (exerciseId: number, date: string) => void;
-  plannedExercises?: Set<string>;
+  onToggle: (goalId: number, date: string) => void;
+  plannedGoals?: Set<string>;
 }
 
 const colorClasses = {
@@ -36,21 +36,21 @@ const colorClasses = {
   },
 };
 
-export default function ExerciseRow({ exercise, dates, onToggle, plannedExercises }: ExerciseRowProps) {
-  const colors = colorClasses[exercise.color] || colorClasses.red;
+export default function GoalRow({ goal, dates, onToggle, plannedGoals }: GoalRowProps) {
+  const colors = colorClasses[goal.color] || colorClasses.red;
 
   return (
     <tr>
-      {/* Exercise name */}
+      {/* Goal name */}
       <td className="text-sm text-gray-300 font-medium pr-2 py-1">
-        <div className="truncate">{exercise.name}</div>
+        <div className="truncate">{goal.name}</div>
       </td>
 
       {/* Day cells with weight/reps */}
       {dates.map((date) => {
-        const log = exercise.logs[date];
+        const log = goal.logs[date];
         const isCompleted = log?.completed || false;
-        const isPlanned = plannedExercises?.has(`${exercise.id}-${date}`);
+        const isPlanned = plannedGoals?.has(`${goal.id}-${date}`);
 
         // Determine cell style based on completed and planned state
         let cellStyle;
@@ -69,9 +69,9 @@ export default function ExerciseRow({ exercise, dates, onToggle, plannedExercise
         return (
           <td key={date} className="px-1 py-1">
             <button
-              onClick={() => onToggle(exercise.id, date)}
+              onClick={() => onToggle(goal.id, date)}
               className={`w-full aspect-square rounded-lg transition-all text-[0.6rem] leading-tight flex flex-col items-center justify-center ${cellStyle}`}
-              aria-label={`Log ${exercise.name} for ${date}`}
+              aria-label={`Log ${goal.name} for ${date}`}
             >
               {isCompleted ? (
                 log?.weight && log?.reps ? (

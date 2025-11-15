@@ -1,6 +1,8 @@
+// Color options for goals
 export type ExerciseColor = 'red' | 'yellow' | 'green' | 'blue';
 
-export interface Exercise {
+// Goals (completion targets, formerly called "exercises")
+export interface Goal {
   id: number;
   name: string;
   color: ExerciseColor;
@@ -8,23 +10,46 @@ export interface Exercise {
   created_at: Date;
 }
 
+export interface GoalLog {
+  id: number;
+  goal_id: number;
+  date: string; // YYYY-MM-DD format
+  completed: boolean;
+  exercise_id?: number; // Which exercise was used (if any)
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface GoalLogEntry {
+  completed: boolean;
+  exercise_id?: number; // Which exercise was used
+  weight?: number; // Weight from linked exercise log (denormalized for display)
+  reps?: number; // Reps from linked exercise log (denormalized for display)
+}
+
+export interface GoalWithLogs extends Goal {
+  logs: Record<string, GoalLogEntry>; // date -> log entry mapping
+  linkedExercises?: Exercise[]; // Exercises that can be linked to this goal
+}
+
+// Exercises (specific movements with weight/reps tracking)
+export interface Exercise {
+  id: number;
+  name: string;
+  created_at: Date;
+}
+
 export interface ExerciseLog {
   id: number;
   exercise_id: number;
   date: string; // YYYY-MM-DD format
-  completed: boolean;
   weight?: number; // Weight in kg
   reps?: number; // Number of repetitions
   created_at: Date;
   updated_at: Date;
 }
 
-export interface LogEntry {
-  completed: boolean;
+export interface ExerciseLogEntry {
   weight?: number;
   reps?: number;
-}
-
-export interface ExerciseWithLogs extends Exercise {
-  logs: Record<string, LogEntry>; // date -> log entry mapping
 }
