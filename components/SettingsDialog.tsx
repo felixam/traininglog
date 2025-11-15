@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { AppSettings } from '@/lib/settings';
+import { useState } from 'react';
 
 interface SettingsDialogProps {
   currentSettings: AppSettings;
@@ -14,10 +14,11 @@ export default function SettingsDialog({
   onSave,
   onClose,
 }: SettingsDialogProps) {
-  const [visibleDays, setVisibleDays] = useState(currentSettings.visibleDays);
+  const [visibleDays, setVisibleDays] = useState(currentSettings.visibleDays.toString());
 
   const handleSave = () => {
-    onSave({ visibleDays });
+    const days = Math.max(1, Math.min(30, parseInt(visibleDays) || 7));
+    onSave({ visibleDays: days });
     onClose();
   };
 
@@ -56,8 +57,9 @@ export default function SettingsDialog({
             </label>
             <input
               type="number"
+              inputMode="numeric"
               value={visibleDays}
-              onChange={(e) => setVisibleDays(parseInt(e.target.value) || 1)}
+              onChange={(e) => setVisibleDays(e.target.value)}
               min="1"
               max="30"
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
