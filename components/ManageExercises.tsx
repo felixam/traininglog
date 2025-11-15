@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { Exercise, ExerciseColor } from '@/lib/types';
+import { useState } from 'react';
 
 interface ManageExercisesProps {
   exercises: Exercise[];
@@ -165,11 +165,10 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
                     key={color.value}
                     type="button"
                     onClick={() => setNewExerciseColor(color.value)}
-                    className={`flex-1 py-2 rounded-lg ${color.bgClass} ${
-                      newExerciseColor === color.value
+                    className={`flex-1 py-2 rounded-lg ${color.bgClass} ${newExerciseColor === color.value
                         ? 'ring-2 ring-white ring-offset-2 ring-offset-gray-900'
                         : 'opacity-50 hover:opacity-75'
-                    }`}
+                      }`}
                   >
                     <span className="text-white text-xs font-medium">{color.label}</span>
                   </button>
@@ -199,15 +198,14 @@ export default function ManageExercises({ exercises, onClose, onRefresh }: Manag
                 >
                   <div className="flex items-center gap-3 flex-1">
                     <div
-                      className={`w-4 h-4 rounded-full flex-shrink-0 ${
-                        exercise.color === 'red'
+                      className={`w-4 h-4 rounded-full flex-shrink-0 ${exercise.color === 'red'
                           ? 'bg-red-500'
                           : exercise.color === 'yellow'
-                          ? 'bg-yellow-500'
-                          : exercise.color === 'green'
-                          ? 'bg-green-500'
-                          : 'bg-blue-500'
-                      }`}
+                            ? 'bg-yellow-500'
+                            : exercise.color === 'green'
+                              ? 'bg-green-500'
+                              : 'bg-blue-500'
+                        }`}
                     />
                     {editingId === exercise.id ? (
                       <input

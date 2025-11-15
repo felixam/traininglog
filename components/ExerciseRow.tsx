@@ -46,9 +46,8 @@ export default function ExerciseRow({ exercise, dates, onToggle }: ExerciseRowPr
           <td key={date} className="px-1 py-1">
             <button
               onClick={() => onToggle(exercise.id, date)}
-              className={`w-full aspect-square rounded-lg transition-all text-[0.6rem] leading-tight flex flex-col items-center justify-center ${
-                isCompleted ? `${colors.active} text-white` : colors.inactive
-              }`}
+              className={`w-full aspect-square rounded-lg transition-all text-[0.6rem] leading-tight flex flex-col items-center justify-center ${isCompleted ? `${colors.active} text-white` : colors.inactive
+                }`}
               aria-label={`Log ${exercise.name} for ${date}`}
             >
               {isCompleted ? (

@@ -1,4 +1,5 @@
 // Script to initialize the database schema
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');

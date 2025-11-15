@@ -12,7 +12,7 @@ export async function PATCH(
     const { name, color, display_order } = body;
 
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: (string | number)[] = [];
     let paramCount = 1;
 
     if (name !== undefined) {

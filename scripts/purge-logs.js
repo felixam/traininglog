@@ -1,4 +1,5 @@
 // Script to purge all exercise logs from the database
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { Pool } = require('pg');
 
 async function purgeLogs() {
