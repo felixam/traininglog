@@ -9,7 +9,6 @@ I have my own kind of training plan. I don´t do bro split, or full body or some
 I train each day, until my body tells me to chill out. Then in insert a rest day.
 In each workout, I do the exercises that are most 'urgent', i.e. i haven't done for the longest time.
 And by 'exercise', I mean 'muscle group or elemental exercise'. 'Pull Down' and 'Row' are elemental exercises for me. 'Abs' is a muscle group where I can vary the specific exercise.
-I don´t care for specific weight/reps that much, I do progressive overload mostly by feel/memory. But I will probably add a basic version of logging at least of weight/reps of the 1st working set.
 
 ## Features
 
@@ -18,9 +17,6 @@ I don´t care for specific weight/reps that much, I do progressive overload most
 - Click to toggle workout completion per day
 - Fully responsive design (mobile first)
 - Order by 'least recent workout first'
-
-## ToDo
-- log/remember weight + reps of 1st working set
 
 ## Prerequisites
 
