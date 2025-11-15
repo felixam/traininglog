@@ -42,3 +42,6 @@ next-env.d.ts
 
 # local custom scripts or backups
 local/**
+
+# claude code
+.claude/

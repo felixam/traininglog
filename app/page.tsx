@@ -3,7 +3,9 @@
 import ManageExercises from '@/components/ManageExercises';
 import ExerciseRow from '@/components/ExerciseRow';
 import LogDialog from '@/components/LogDialog';
+import SettingsDialog from '@/components/SettingsDialog';
 import { ExerciseWithLogs, LogEntry } from '@/lib/types';
+import { AppSettings, getSettings, saveSettings } from '@/lib/settings';
 import { format, subDays } from 'date-fns';
 import { useEffect, useState } from 'react';
 
@@ -12,6 +14,8 @@ export default function Home() {
   const [dates, setDates] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showManage, setShowManage] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>({ visibleDays: 7 });
   const [sortByUrgency, setSortByUrgency] = useState(false);
   const [dialogState, setDialogState] = useState<{
     exerciseId: number;
@@ -20,14 +24,20 @@ export default function Home() {
     existingLog?: LogEntry;
   } | null>(null);
 
-  // Generate last 7 days
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const loadedSettings = getSettings();
+    setSettings(loadedSettings);
+  }, []);
+
+  // Generate dates based on settings
   useEffect(() => {
     const today = new Date();
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      return format(subDays(today, 6 - i), 'yyyy-MM-dd');
+    const days = Array.from({ length: settings.visibleDays }, (_, i) => {
+      return format(subDays(today, settings.visibleDays - 1 - i), 'yyyy-MM-dd');
     });
-    setDates(last7Days);
-  }, []);
+    setDates(days);
+  }, [settings.visibleDays]);
 
   // Sort exercises based on urgency mode
   const sortExercises = (exercisesList: ExerciseWithLogs[], byUrgency: boolean) => {
@@ -64,7 +74,7 @@ export default function Home() {
   // Fetch exercises and logs
   const fetchData = async () => {
     try {
-      const response = await fetch('/api/logs');
+      const response = await fetch(`/api/logs?days=${settings.visibleDays}`);
       const data = await response.json();
       const sorted = sortExercises(data.exercises || [], sortByUrgency);
       setExercises(sorted);
@@ -77,9 +87,11 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchData();
+    if (settings.visibleDays > 0) {
+      fetchData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [settings.visibleDays]);
 
   // Re-sort exercises when sort mode changes
   useEffect(() => {
@@ -147,6 +159,12 @@ export default function Home() {
     }
   };
 
+  // Save settings
+  const handleSaveSettings = (newSettings: AppSettings) => {
+    saveSettings(newSettings);
+    setSettings(newSettings);
+  };
+
   // Get day name from date
   const getDayName = (dateStr: string) => {
     const date = new Date(dateStr + 'T12:00:00'); // Add time to avoid timezone issues
@@ -172,6 +190,17 @@ export default function Home() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
+          {/* Settings Button */}
+          <button
+            onClick={() => setShowSettings(true)}
+            className="text-gray-400 hover:text-gray-300"
+            title="Settings"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
           <h1 className="text-2xl font-bold">
             Training<span className="text-blue-500">Log</span>
           </h1>
@@ -253,6 +282,15 @@ export default function Home() {
           onSave={handleSaveLog}
           onDelete={dialogState.existingLog ? handleDeleteLog : undefined}
           onCancel={() => setDialogState(null)}
+        />
+      )}
+
+      {/* Settings Dialog */}
+      {showSettings && (
+        <SettingsDialog
+          currentSettings={settings}
+          onSave={handleSaveSettings}
+          onClose={() => setShowSettings(false)}
         />
       )}
     </div>

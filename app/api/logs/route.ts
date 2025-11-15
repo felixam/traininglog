@@ -3,12 +3,17 @@ import { query } from '@/lib/db';
 import { format, subDays } from 'date-fns';
 import { LogEntry } from '@/lib/types';
 
-// GET logs for the last 7 days
-export async function GET() {
+// GET logs for the last N days (default 7)
+export async function GET(request: Request) {
   try {
-    // Calculate the date range (last 7 days)
+    // Get days parameter from query string
+    const { searchParams } = new URL(request.url);
+    const daysParam = searchParams.get('days');
+    const days = daysParam ? Math.max(1, Math.min(30, parseInt(daysParam))) : 7;
+
+    // Calculate the date range
     const today = new Date();
-    const startDate = format(subDays(today, 6), 'yyyy-MM-dd');
+    const startDate = format(subDays(today, days - 1), 'yyyy-MM-dd');
     const endDate = format(today, 'yyyy-MM-dd');
 
     // Fetch all exercises and their logs for the last 7 days
