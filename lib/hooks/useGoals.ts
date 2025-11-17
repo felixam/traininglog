@@ -14,6 +14,9 @@ export function useGoals(visibleDays: number) {
   const lastVisibleDays = useGoalStore((state) => state.lastVisibleDays);
   const lastFetchedAt = useGoalStore((state) => state.lastFetchedAt);
   const error = useGoalStore((state) => state.error);
+  const optimisticUpsertLog = useGoalStore((state) => state.optimisticUpsertLog);
+  const optimisticDeleteLog = useGoalStore((state) => state.optimisticDeleteLog);
+  const processQueue = useGoalStore((state) => state.processQueue);
 
   // Fetch data when visibleDays changes
   useEffect(() => {
@@ -21,6 +24,15 @@ export function useGoals(visibleDays: number) {
       fetchGoals(visibleDays);
     }
   }, [fetchGoals, visibleDays]);
+
+  // Try to flush any queued mutations on mount and when coming back online
+  useEffect(() => {
+    processQueue();
+    const onOnline = () => processQueue();
+
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [processQueue]);
 
   const isStaleForVisibleDays = useMemo(
     () => lastVisibleDays !== undefined && lastVisibleDays !== visibleDays,
@@ -36,5 +48,7 @@ export function useGoals(visibleDays: number) {
     lastFetchedAt,
     error,
     isStaleForVisibleDays,
+    optimisticUpsertLog,
+    optimisticDeleteLog,
   };
 }

@@ -28,6 +28,8 @@ export default function Home() {
     lastFetchedAt,
     error,
     isStaleForVisibleDays,
+    optimisticUpsertLog,
+    optimisticDeleteLog,
   } = useGoals(settings.visibleDays);
 
   const [showManageGoals, setShowManageGoals] = useState(false);
@@ -80,45 +82,22 @@ export default function Home() {
   const handleSaveLog = async (exerciseId?: number, weight?: number, reps?: number) => {
     if (!dialogState) return;
 
-    try {
-      const response = await fetch('/api/logs/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          goal_id: dialogState.goalId,
-          date: dialogState.date,
-          exercise_id: exerciseId,
-          weight,
-          reps,
-        }),
-      });
-
-      if (response.ok) {
-        setDialogState(null);
-        refetch();
-      }
-    } catch (error) {
-      console.error('Error saving log:', error);
-    }
+    optimisticUpsertLog({
+      goalId: dialogState.goalId,
+      date: dialogState.date,
+      exerciseId,
+      weight,
+      reps,
+    });
+    setDialogState(null);
   };
 
   // Delete log from dialog
   const handleDeleteLog = async () => {
     if (!dialogState) return;
 
-    try {
-      const response = await fetch(
-        `/api/logs/toggle?goal_id=${dialogState.goalId}&date=${dialogState.date}`,
-        { method: 'DELETE' }
-      );
-
-      if (response.ok) {
-        setDialogState(null);
-        refetch();
-      }
-    } catch (error) {
-      console.error('Error deleting log:', error);
-    }
+    optimisticDeleteLog(dialogState.goalId, dialogState.date);
+    setDialogState(null);
   };
 
   // Backup database
