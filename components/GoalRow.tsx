@@ -13,25 +13,25 @@ const colorClasses = {
   red: {
     active: 'bg-red-500/70',
     inactiveBg: 'bg-red-950/50',
-    inactiveBorder: 'border border-red-900/30',
+    inactiveBorder: '',
     plannedBorder: 'border-4 border-red-500/70',
   },
   yellow: {
     active: 'bg-yellow-500/80',
     inactiveBg: 'bg-yellow-950/50',
-    inactiveBorder: 'border border-yellow-900/30',
+    inactiveBorder: '',
     plannedBorder: 'border-4 border-yellow-500/80',
   },
   green: {
     active: 'bg-green-500/70',
     inactiveBg: 'bg-green-950/50',
-    inactiveBorder: 'border border-green-900/30',
+    inactiveBorder: '',
     plannedBorder: 'border-4 border-green-500/70',
   },
   blue: {
     active: 'bg-blue-500/70',
     inactiveBg: 'bg-blue-950/50',
-    inactiveBorder: 'border border-blue-900/30',
+    inactiveBorder: '',
     plannedBorder: 'border-4 border-blue-500/70',
   },
 };
@@ -70,7 +70,7 @@ export default function GoalRow({ goal, dates, onToggle, plannedGoals }: GoalRow
           <td key={date} className="px-1 py-1">
             <button
               onClick={() => onToggle(goal.id, date)}
-              className={`w-full aspect-square rounded-lg transition-all text-[0.6rem] leading-tight flex flex-col items-center justify-center ${cellStyle}`}
+              className={`w-full aspect-square rounded-full transition-all text-[0.6rem] leading-tight flex flex-col items-center justify-center ${cellStyle}`}
               aria-label={`Log ${goal.name} for ${date}`}
             >
               {isCompleted ? (
