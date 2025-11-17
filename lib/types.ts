@@ -29,7 +29,8 @@ export interface GoalLogEntry {
 
 export interface GoalWithLogs extends Goal {
   logs: Record<string, GoalLogEntry>; // date -> log entry mapping
-  linkedExercises?: Exercise[]; // Exercises that can be linked to this goal
+  linkedExercises?: ExerciseWithHistory[]; // Exercises that can be linked to this goal
+  lastCompletedExerciseId?: number; // Most recent exercise used to complete this goal
 }
 
 // Exercises (specific movements with weight/reps tracking)
@@ -37,6 +38,21 @@ export interface Exercise {
   id: number;
   name: string;
   created_at: Date;
+}
+
+export interface ExerciseHistoryEntry {
+  weight?: number; // Weight in kg
+  reps?: number; // Number of repetitions
+  date: string; // YYYY-MM-DD format
+}
+
+export interface ExerciseHistory {
+  maxWeight: ExerciseHistoryEntry | null;
+  lastLog: ExerciseHistoryEntry | null;
+}
+
+export interface ExerciseWithHistory extends Exercise {
+  history?: ExerciseHistory;
 }
 
 export interface ExerciseLog {

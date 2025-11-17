@@ -14,8 +14,10 @@ pool.on('error', (err) => {
   process.exit(-1);
 });
 
+type QueryParam = string | number | boolean | null | QueryParam[];
+
 // Export query function
-export const query = async (text: string, params?: (string | number | boolean | null)[]) => {
+export const query = async (text: string, params?: QueryParam[]) => {
   const start = Date.now();
   try {
     const res = await pool.query(text, params);

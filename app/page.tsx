@@ -8,7 +8,7 @@ import SettingsDialog from '@/components/SettingsDialog';
 import RestoreConfirmDialog from '@/components/RestoreConfirmDialog';
 import PageHeader from '@/components/PageHeader';
 import GoalTable from '@/components/GoalTable';
-import { GoalLogEntry, Exercise, Goal } from '@/lib/types';
+import { GoalLogEntry, ExerciseWithHistory, Goal } from '@/lib/types';
 import { useSettings } from '@/lib/hooks/useSettings';
 import { usePlanMode } from '@/lib/hooks/usePlanMode';
 import { useDateRange } from '@/lib/hooks/useDateRange';
@@ -40,7 +40,8 @@ export default function Home() {
     goalId: number;
     goalName: string;
     date: string;
-    linkedExercises: Exercise[];
+    linkedExercises: ExerciseWithHistory[];
+    lastCompletedExerciseId?: number;
     existingLog?: GoalLogEntry;
   } | null>(null);
   const [restoreConfirmData, setRestoreConfirmData] = useState<{
@@ -73,6 +74,7 @@ export default function Home() {
         goalName: goal.name,
         date,
         linkedExercises: goal.linkedExercises || [],
+        lastCompletedExerciseId: goal.lastCompletedExerciseId,
         existingLog,
       });
     }
@@ -276,11 +278,11 @@ export default function Home() {
       {/* Log Entry Dialog */}
       {dialogState && (
         <LogDialog
-          goalId={dialogState.goalId}
           goalName={dialogState.goalName}
           date={dialogState.date}
           linkedExercises={dialogState.linkedExercises}
           existingLog={dialogState.existingLog}
+          lastCompletedExerciseId={dialogState.lastCompletedExerciseId}
           onSave={handleSaveLog}
           onDelete={dialogState.existingLog ? handleDeleteLog : undefined}
           onCancel={() => setDialogState(null)}

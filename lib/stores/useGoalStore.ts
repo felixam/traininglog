@@ -55,6 +55,7 @@ const applyLogUpdate = (goals: GoalWithLogs[], payload: LogMutationPayload): Goa
         ...goal.logs,
         [payload.date]: nextLog,
       },
+      lastCompletedExerciseId: payload.exerciseId || goal.lastCompletedExerciseId,
     };
   });
 
@@ -101,7 +102,8 @@ export const useGoalStore = create<GoalStoreState>()(
           }
 
           const data = await response.json();
-          const withPending = applyPendingMutations(data.exercises || [], pendingLogMutations);
+          const goalsFromApi = data.goals || [];
+          const withPending = applyPendingMutations(goalsFromApi, pendingLogMutations);
           const sorted = sortGoals(withPending, sortByUrgency);
 
           set({

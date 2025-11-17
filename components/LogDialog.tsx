@@ -1,96 +1,53 @@
 'use client';
 
-import { Exercise, GoalLogEntry } from '@/lib/types';
+import { ExerciseWithHistory, GoalLogEntry, ExerciseHistory } from '@/lib/types';
 import { format } from 'date-fns';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Dialog from './Dialog';
 
 interface LogDialogProps {
-  goalId: number;
   goalName: string;
   date: string;
-  linkedExercises: Exercise[];
+  linkedExercises: ExerciseWithHistory[];
+  lastCompletedExerciseId?: number;
   existingLog?: GoalLogEntry;
   onSave: (exerciseId?: number, weight?: number, reps?: number) => void;
   onDelete?: () => void;
   onCancel: () => void;
 }
 
-interface HistoryData {
-  maxWeight: { weight: number; reps: number; date: string } | null;
-  lastLog: { weight: number; reps: number; date: string } | null;
-}
-
 export default function LogDialog({
-  goalId,
   goalName,
   date,
   linkedExercises,
+  lastCompletedExerciseId,
   existingLog,
   onSave,
   onDelete,
   onCancel,
 }: LogDialogProps) {
-  const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(
-    existingLog?.exercise_id || null
+  const initialSelectedExerciseId =
+    existingLog?.exercise_id ||
+    (lastCompletedExerciseId && linkedExercises.some((ex) => ex.id === lastCompletedExerciseId)
+      ? lastCompletedExerciseId
+      : null);
+
+  const initialHistory =
+    (initialSelectedExerciseId && linkedExercises.find((ex) => ex.id === initialSelectedExerciseId)?.history) ||
+    null;
+
+  const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(initialSelectedExerciseId);
+  const [weight, setWeight] = useState<string>(
+    existingLog?.weight?.toString() || initialHistory?.lastLog?.weight?.toString() || ''
   );
-  const [weight, setWeight] = useState<string>(existingLog?.weight?.toString() || '');
-  const [reps, setReps] = useState<string>(existingLog?.reps?.toString() || '');
-  const [history, setHistory] = useState<HistoryData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [reps, setReps] = useState<string>(
+    existingLog?.reps?.toString() || initialHistory?.lastLog?.reps?.toString() || ''
+  );
+  const history: ExerciseHistory | null =
+    selectedExerciseId && linkedExercises.find((ex) => ex.id === selectedExerciseId)?.history
+      ? linkedExercises.find((ex) => ex.id === selectedExerciseId)!.history!
+      : null;
   const [isSaving, setIsSaving] = useState(false);
-
-  // Fetch last used exercise for this goal on mount
-  useEffect(() => {
-    if (!existingLog && linkedExercises.length > 0) {
-      const fetchLastExercise = async () => {
-        try {
-          const response = await fetch(`/api/logs/last-exercise?goal_id=${goalId}`);
-          if (response.ok) {
-            const data = await response.json();
-            if (data.exercise_id) {
-              setSelectedExerciseId(data.exercise_id);
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching last exercise:', error);
-        }
-      };
-      fetchLastExercise();
-    }
-  }, [goalId, linkedExercises.length, existingLog]);
-
-  // Fetch history when selected exercise changes
-  useEffect(() => {
-    if (!selectedExerciseId) {
-      setIsLoading(false);
-      setHistory(null);
-      return;
-    }
-
-    const fetchHistory = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`/api/logs/history?exercise_id=${selectedExerciseId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setHistory(data);
-
-          // Pre-fill with last log if no existing log
-          if (!existingLog && data.lastLog) {
-            setWeight(data.lastLog.weight?.toString() || '');
-            setReps(data.lastLog.reps?.toString() || '');
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching history:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchHistory();
-  }, [selectedExerciseId, existingLog]);
 
   const handleUseMax = () => {
     if (history?.maxWeight) {
@@ -154,7 +111,21 @@ export default function LogDialog({
             <label className="block text-sm text-gray-400 mb-2">Exercise (optional)</label>
             <select
               value={selectedExerciseId || ''}
-              onChange={(e) => setSelectedExerciseId(e.target.value ? parseInt(e.target.value) : null)}
+              onChange={(e) => {
+                const newId = e.target.value ? parseInt(e.target.value) : null;
+                setSelectedExerciseId(newId);
+
+                if (!existingLog) {
+                  const selectedHistory = linkedExercises.find((ex) => ex.id === newId)?.history;
+                  if (selectedHistory?.lastLog) {
+                    setWeight(selectedHistory.lastLog.weight?.toString() || '');
+                    setReps(selectedHistory.lastLog.reps?.toString() || '');
+                  } else {
+                    setWeight('');
+                    setReps('');
+                  }
+                }
+              }}
               className="w-full px-3 py-2 text-base bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
               disabled={isSaving}
             >
@@ -169,7 +140,7 @@ export default function LogDialog({
         )}
 
         {/* History Info - Only show if exercise selected */}
-        {selectedExerciseId && !isLoading && history && (history.maxWeight || history.lastLog) && (
+        {selectedExerciseId && history && (history.maxWeight || history.lastLog) && (
           <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-gray-800 rounded-lg text-xs sm:text-sm space-y-1.5 sm:space-y-2">
             {history.maxWeight && (
               <div className="flex items-center justify-between gap-3">

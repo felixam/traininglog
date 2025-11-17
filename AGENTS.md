@@ -15,6 +15,10 @@ npm start            # Run production server
 npm run init-db      # Initialize remote database (creates tables, seeds data)
 ```
 
+## Rules
+
+- when changing functionality, *never* heed to backward compability. remove/change api behavior without compromise. also do not leave any comments referring to old code.
+
 ## Environment Setup
 
 - Requires `DATABASE_URL` environment variable (PostgreSQL connection string)
