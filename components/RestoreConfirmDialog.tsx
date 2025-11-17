@@ -1,5 +1,7 @@
 'use client';
 
+import Dialog from './Dialog';
+
 interface BackupMetadata {
   timestamp: string;
   counts: {
@@ -32,15 +34,8 @@ export default function RestoreConfirmDialog({
   const backupDate = new Date(backupMetadata.timestamp).toLocaleString();
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={onCancel}
-    >
-      <div
-        className="bg-gray-900 rounded-lg max-w-md w-full p-6"
-        onKeyDown={handleKeyDown}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog onClose={onCancel}>
+      <div onKeyDown={handleKeyDown}>
         {/* Header with warning icon */}
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-shrink-0 w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center">
@@ -109,6 +104,6 @@ export default function RestoreConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

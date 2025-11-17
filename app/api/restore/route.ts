@@ -15,15 +15,18 @@ interface BackupData {
 
 function validateBackup(backup: unknown): backup is BackupData {
   if (!backup || typeof backup !== 'object') return false;
-  if (!backup.version || !backup.timestamp || !backup.data) return false;
 
-  const { data } = backup;
+  const b = backup as Record<string, unknown>;
+  if (!b.version || !b.timestamp || !b.data) return false;
+
+  const { data } = b;
   if (!data || typeof data !== 'object') return false;
 
   // Check all required tables exist and are arrays
   const requiredTables = ['goals', 'exercises', 'goal_exercises', 'goal_logs', 'exercise_logs'];
+  const d = data as Record<string, unknown>;
   for (const table of requiredTables) {
-    if (!Array.isArray(data[table])) return false;
+    if (!Array.isArray(d[table])) return false;
   }
 
   return true;

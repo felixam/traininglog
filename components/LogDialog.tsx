@@ -3,6 +3,7 @@
 import { Exercise, GoalLogEntry } from '@/lib/types';
 import { format } from 'date-fns';
 import { useEffect, useState } from 'react';
+import Dialog from './Dialog';
 
 interface LogDialogProps {
   goalId: number;
@@ -133,15 +134,8 @@ export default function LogDialog({
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto"
-      onClick={onCancel}
-    >
-      <div
-        className="bg-gray-900 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 mt-4 sm:mt-0"
-        onKeyDown={handleKeyDown}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog onClose={onCancel}>
+      <div onKeyDown={handleKeyDown}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
@@ -295,6 +289,6 @@ export default function LogDialog({
           )}
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

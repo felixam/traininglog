@@ -2,6 +2,7 @@
 
 import { Exercise, Goal, GoalWithLogs } from '@/lib/types';
 import { useState, useEffect } from 'react';
+import Dialog from './Dialog';
 
 interface ManageExercisesLibraryProps {
   onClose: () => void;
@@ -139,14 +140,7 @@ export default function ManageExercisesLibrary({ onClose, onRefresh }: ManageExe
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-gray-900 rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog onClose={onClose} maxHeight="80vh" noPadding={true}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <h2 className="text-xl font-bold">Manage Exercises</h2>
@@ -278,7 +272,6 @@ export default function ManageExercisesLibrary({ onClose, onRefresh }: ManageExe
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }
