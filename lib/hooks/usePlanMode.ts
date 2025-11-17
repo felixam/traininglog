@@ -40,7 +40,10 @@ export function usePlanMode() {
 
     // Save to localStorage
     const plannedArray = Array.from(newPlanned).map(k => {
-      const [id, d] = k.split('-');
+      // Split only on first hyphen to separate goalId from date (yyyy-MM-dd)
+      const firstHyphenIndex = k.indexOf('-');
+      const id = k.slice(0, firstHyphenIndex);
+      const d = k.slice(firstHyphenIndex + 1);
       return { goalId: parseInt(id), date: d };
     });
     savePlannedGoals(plannedArray);
