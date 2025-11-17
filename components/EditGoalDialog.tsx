@@ -1,6 +1,7 @@
 'use client';
 
 import { Goal, Exercise, ExerciseColor } from '@/lib/types';
+import { colorOptions } from '@/lib/colors';
 import { useState, useEffect } from 'react';
 
 interface EditGoalDialogProps {
@@ -8,13 +9,6 @@ interface EditGoalDialogProps {
   onClose: () => void;
   onSave: () => void;
 }
-
-const colorOptions: { value: ExerciseColor; label: string; bgClass: string }[] = [
-  { value: 'red', label: 'Red', bgClass: 'bg-red-500' },
-  { value: 'yellow', label: 'Yellow', bgClass: 'bg-yellow-500' },
-  { value: 'green', label: 'Green', bgClass: 'bg-green-500' },
-  { value: 'blue', label: 'Blue', bgClass: 'bg-blue-500' },
-];
 
 export default function EditGoalDialog({ goal, onClose, onSave }: EditGoalDialogProps) {
   const [name, setName] = useState(goal.name);

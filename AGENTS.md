@@ -1,5 +1,3 @@
-# CLAUDE.md
-
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
@@ -41,8 +39,6 @@ npm run init-db      # Initialize remote database (creates tables, seeds data)
 - `Exercise`: id, name, created_at
 - `ExerciseLog`: id, exercise_id, date, weight?, reps?
 - `ExerciseLogEntry`: weight?, reps?
-
-**Colors**: `'red' | 'yellow' | 'green' | 'blue'`
 
 ### API Routes (`app/api/`)
 

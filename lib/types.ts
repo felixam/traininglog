@@ -1,5 +1,5 @@
 // Color options for goals
-export type ExerciseColor = 'red' | 'yellow' | 'green' | 'blue';
+export type ExerciseColor = 'red' | 'yellow' | 'green' | 'blue' | 'teal' | 'violet' | 'orange';
 
 // Goals (completion targets, formerly called "exercises")
 export interface Goal {

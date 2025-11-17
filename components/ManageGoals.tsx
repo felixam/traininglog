@@ -1,6 +1,7 @@
 'use client';
 
 import { Goal, ExerciseColor } from '@/lib/types';
+import { colorOptions, colorConfig } from '@/lib/colors';
 import { useState } from 'react';
 
 interface ManageGoalsProps {
@@ -9,13 +10,6 @@ interface ManageGoalsProps {
   onRefresh: () => void;
   onEditGoal: (goal: Goal) => void;
 }
-
-const colorOptions: { value: ExerciseColor; label: string; bgClass: string }[] = [
-  { value: 'red', label: 'Red', bgClass: 'bg-red-500' },
-  { value: 'yellow', label: 'Yellow', bgClass: 'bg-yellow-500' },
-  { value: 'green', label: 'Green', bgClass: 'bg-green-500' },
-  { value: 'blue', label: 'Blue', bgClass: 'bg-blue-500' },
-];
 
 export default function ManageGoals({ goals, onClose, onRefresh, onEditGoal }: ManageGoalsProps) {
   const [newGoalName, setNewGoalName] = useState('');
@@ -171,14 +165,7 @@ export default function ManageGoals({ goals, onClose, onRefresh, onEditGoal }: M
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div
-                      className={`w-4 h-4 rounded-full flex-shrink-0 ${goal.color === 'red'
-                          ? 'bg-red-500'
-                          : goal.color === 'yellow'
-                            ? 'bg-yellow-500'
-                            : goal.color === 'green'
-                              ? 'bg-green-500'
-                              : 'bg-blue-500'
-                        }`}
+                      className={`w-4 h-4 rounded-full flex-shrink-0 ${colorConfig[goal.color].bgClass}`}
                     />
                     <button
                       onClick={() => onEditGoal(goal)}

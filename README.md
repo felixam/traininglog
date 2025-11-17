@@ -15,7 +15,7 @@ By 'exercise', I mean 'muscle group or elemental exercise'. 'Pull Down' and 'Row
 - Track **goals** (muscle groups like "Chest", "Abs") across configurable days (1-30)
 - Link specific **exercises** (like "Bench Press", "Pushups") to goals
 - Track weight and reps for each exercise
-- Color-coded goal categories (red, yellow, green, blue) for visual organization
+- Color-coded goal categories for visual organization
 - **Dual completion modes**:
   - Mark goal complete directly (simple checkmark)
   - Complete goal via exercise with weight/reps tracking
