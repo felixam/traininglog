@@ -5,6 +5,7 @@ import ManageExercisesLibrary from '@/components/ManageExercisesLibrary';
 import EditGoalDialog from '@/components/EditGoalDialog';
 import LogDialog from '@/components/LogDialog';
 import SettingsDialog from '@/components/SettingsDialog';
+import RestoreConfirmDialog from '@/components/RestoreConfirmDialog';
 import PageHeader from '@/components/PageHeader';
 import GoalTable from '@/components/GoalTable';
 import { GoalLogEntry, Exercise, Goal } from '@/lib/types';
@@ -30,6 +31,19 @@ export default function Home() {
     date: string;
     linkedExercises: Exercise[];
     existingLog?: GoalLogEntry;
+  } | null>(null);
+  const [restoreConfirmData, setRestoreConfirmData] = useState<{
+    file: File;
+    metadata: {
+      timestamp: string;
+      counts: {
+        goals: number;
+        exercises: number;
+        goal_exercises: number;
+        goal_logs: number;
+        exercise_logs: number;
+      };
+    };
   } | null>(null);
 
   // Toggle handler - plan mode or log dialog
@@ -95,6 +109,103 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error deleting log:', error);
+    }
+  };
+
+  // Backup database
+  const handleBackup = async () => {
+    try {
+      const response = await fetch('/api/backup');
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `trainingslog-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Error creating backup:', error);
+      alert('Failed to create backup');
+    }
+  };
+
+  // Restore database - file selection
+  const handleRestore = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        // Read and validate the file
+        const text = await file.text();
+        const backup = JSON.parse(text);
+
+        // Validate backup structure
+        if (!backup.version || !backup.timestamp || !backup.data) {
+          alert('Invalid backup file format');
+          return;
+        }
+
+        const { data } = backup;
+        if (!data.goals || !data.exercises || !data.goal_logs || !data.exercise_logs) {
+          alert('Invalid backup file format - missing required tables');
+          return;
+        }
+
+        // Show confirmation dialog with metadata
+        setRestoreConfirmData({
+          file,
+          metadata: {
+            timestamp: backup.timestamp,
+            counts: {
+              goals: data.goals.length,
+              exercises: data.exercises.length,
+              goal_exercises: data.goal_exercises?.length || 0,
+              goal_logs: data.goal_logs.length,
+              exercise_logs: data.exercise_logs.length,
+            },
+          },
+        });
+      } catch (error) {
+        console.error('Error reading backup file:', error);
+        alert('Failed to read backup file - invalid JSON');
+      }
+    };
+    input.click();
+  };
+
+  // Restore database - confirmed
+  const handleRestoreConfirmed = async () => {
+    if (!restoreConfirmData) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', restoreConfirmData.file);
+
+      const response = await fetch('/api/restore', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        setRestoreConfirmData(null);
+        setShowSettings(false);
+        refetch();
+        alert('Database restored successfully');
+      } else {
+        const error = await response.json();
+        alert(`Failed to restore database: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error restoring database:', error);
+      alert('Failed to restore database');
     }
   };
 
@@ -189,6 +300,17 @@ export default function Home() {
             setShowSettings(false);
             setShowManageExercises(true);
           }}
+          onBackup={handleBackup}
+          onRestore={handleRestore}
+        />
+      )}
+
+      {/* Restore Confirmation Dialog */}
+      {restoreConfirmData && (
+        <RestoreConfirmDialog
+          backupMetadata={restoreConfirmData.metadata}
+          onConfirm={handleRestoreConfirmed}
+          onCancel={() => setRestoreConfirmData(null)}
         />
       )}
     </div>
