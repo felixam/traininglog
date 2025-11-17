@@ -39,7 +39,6 @@ export default function LogDialog({
   const [history, setHistory] = useState<HistoryData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [lastExerciseFetched, setLastExerciseFetched] = useState(false);
 
   // Fetch last used exercise for this goal on mount
   useEffect(() => {
@@ -55,13 +54,9 @@ export default function LogDialog({
           }
         } catch (error) {
           console.error('Error fetching last exercise:', error);
-        } finally {
-          setLastExerciseFetched(true);
         }
       };
       fetchLastExercise();
-    } else {
-      setLastExerciseFetched(true);
     }
   }, [goalId, linkedExercises.length, existingLog]);
 

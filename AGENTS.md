@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Training log webapp for tracking goals and exercises with weight/reps tracking. Users can complete goals directly or via linked exercises. Single-user app with customizable goals, exercises, and configurable visible days (1-30).
 
-**Stack**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, PostgreSQL (remote)
+**Stack**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, PostgreSQL (remote), Zustand (client store)
 
 ## Development Commands
 
@@ -147,9 +147,10 @@ npm run init-db      # Initialize remote database (creates tables, seeds data)
 ### Hooks & Utils
 
 **useGoals** (`lib/hooks/useGoals.ts`):
-- Fetches goals with logs from `/api/logs?days=${visibleDays}`
-- Manages loading state and sorting (by order or urgency)
-- Returns: `{ goals, isLoading, sortByUrgency, setSortByUrgency, refetch }`
+- Uses Zustand store (`lib/stores/useGoalStore.ts`) with persistence
+- Fetches goals with logs from `/api/logs?days=${visibleDays}` and keeps cached data for offline/failed fetches
+- Handles loading, errors, sorting (order/urgency), stale visibleDays notice
+- Returns: `{ goals, isLoading, sortByUrgency, setSortByUrgency, refetch, lastFetchedAt, error, isStaleForVisibleDays }`
 
 **usePlanMode** (`lib/hooks/usePlanMode.ts`):
 - Manages plan mode state with localStorage persistence

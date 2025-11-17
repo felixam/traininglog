@@ -19,7 +19,16 @@ export default function Home() {
   const { settings, updateSettings } = useSettings();
   const { planMode, setPlanMode, plannedGoals, togglePlanned } = usePlanMode();
   const { dates, getDayName, getDayNumber } = useDateRange(settings.visibleDays);
-  const { goals, isLoading, sortByUrgency, setSortByUrgency, refetch } = useGoals(settings.visibleDays);
+  const {
+    goals,
+    isLoading,
+    sortByUrgency,
+    setSortByUrgency,
+    refetch,
+    lastFetchedAt,
+    error,
+    isStaleForVisibleDays,
+  } = useGoals(settings.visibleDays);
 
   const [showManageGoals, setShowManageGoals] = useState(false);
   const [showManageExercises, setShowManageExercises] = useState(false);
@@ -209,7 +218,11 @@ export default function Home() {
     }
   };
 
-  if (isLoading) {
+  const isInitialLoad = isLoading && goals.length === 0;
+  const lastUpdatedLabel = lastFetchedAt ? new Date(lastFetchedAt).toLocaleString() : null;
+  const showStaleNotice = (error || isStaleForVisibleDays) && goals.length > 0;
+
+  if (isInitialLoad) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-400">Loading...</div>
@@ -226,6 +239,15 @@ export default function Home() {
         onPlanModeToggle={() => setPlanMode(!planMode)}
         onSettingsClick={() => setShowSettings(true)}
       />
+
+      {showStaleNotice && (
+        <div className="mb-3 rounded-lg border border-yellow-800 bg-yellow-900/30 px-4 py-3 text-sm text-yellow-100">
+          {error ? 'Showing saved data. Latest refresh failed.' : 'Showing saved data from a different day range.'}
+          {lastUpdatedLabel && (
+            <div className="text-xs text-yellow-200/80">Last updated: {lastUpdatedLabel}</div>
+          )}
+        </div>
+      )}
 
       <GoalTable
         goals={goals}

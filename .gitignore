@@ -45,3 +45,4 @@ local/**
 
 # claude code
 .claude/
+.codex/

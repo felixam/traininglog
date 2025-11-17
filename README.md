@@ -89,6 +89,9 @@ The app uses a **Goals + Exercises** architecture:
   - Option 1: Complete goal directly (just mark as done)
   - Option 2: Select a linked exercise, enter weight/reps, save
 
+Client state:
+- Goals + logs are cached in a persisted Zustand store (`lib/stores/useGoalStore.ts`) via `useGoals`; UI keeps showing last data if refetch fails (with stale notice) to handle spotty networks.
+
 ## Development
 
 Built with modern web technologies:
