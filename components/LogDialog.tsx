@@ -3,6 +3,7 @@
 import { ExerciseWithHistory, GoalLogEntry, ExerciseHistory } from '@/lib/types';
 import { format } from 'date-fns';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Dialog from './Dialog';
 
 interface LogDialogProps {
@@ -48,6 +49,7 @@ export default function LogDialog({
       ? linkedExercises.find((ex) => ex.id === selectedExerciseId)!.history!
       : null;
   const [isSaving, setIsSaving] = useState(false);
+  const router = useRouter();
 
   const handleUseMax = () => {
     if (history?.maxWeight) {
@@ -109,33 +111,47 @@ export default function LogDialog({
         {linkedExercises.length > 0 && (
           <div className="mb-4">
             <label className="block text-sm text-gray-400 mb-2">Exercise (optional)</label>
-            <select
-              value={selectedExerciseId || ''}
-              onChange={(e) => {
-                const newId = e.target.value ? parseInt(e.target.value) : null;
-                setSelectedExerciseId(newId);
+            <div className="flex gap-2">
+              <select
+                value={selectedExerciseId || ''}
+                onChange={(e) => {
+                  const newId = e.target.value ? parseInt(e.target.value) : null;
+                  setSelectedExerciseId(newId);
 
-                if (!existingLog) {
-                  const selectedHistory = linkedExercises.find((ex) => ex.id === newId)?.history;
-                  if (selectedHistory?.lastLog) {
-                    setWeight(selectedHistory.lastLog.weight?.toString() || '');
-                    setReps(selectedHistory.lastLog.reps?.toString() || '');
-                  } else {
-                    setWeight('');
-                    setReps('');
+                  if (!existingLog) {
+                    const selectedHistory = linkedExercises.find((ex) => ex.id === newId)?.history;
+                    if (selectedHistory?.lastLog) {
+                      setWeight(selectedHistory.lastLog.weight?.toString() || '');
+                      setReps(selectedHistory.lastLog.reps?.toString() || '');
+                    } else {
+                      setWeight('');
+                      setReps('');
+                    }
                   }
-                }
-              }}
-              className="w-full px-3 py-2 text-base bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              disabled={isSaving}
-            >
-              <option value="">-- Complete without exercise --</option>
-              {linkedExercises.map((ex) => (
-                <option key={ex.id} value={ex.id}>
-                  {ex.name}
-                </option>
-              ))}
-            </select>
+                }}
+                className="flex-1 px-3 py-2 text-base bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                disabled={isSaving}
+              >
+                <option value="">-- Complete without exercise --</option>
+                {linkedExercises.map((ex) => (
+                  <option key={ex.id} value={ex.id}>
+                    {ex.name}
+                  </option>
+                ))}
+              </select>
+              {selectedExerciseId && (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/exercises/${selectedExerciseId}/stats`)}
+                  className="px-3 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-gray-300 transition-colors"
+                  title="View stats"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         )}
 
