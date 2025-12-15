@@ -35,6 +35,8 @@ function validateBackup(backup: unknown): backup is BackupData {
   return true;
 }
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
+
 export async function POST(request: Request) {
   try {
     // Parse uploaded file
@@ -44,6 +46,14 @@ export async function POST(request: Request) {
     if (!file) {
       return NextResponse.json(
         { error: 'No file uploaded' },
+        { status: 400 }
+      );
+    }
+
+    // Validate file size before reading
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB` },
         { status: 400 }
       );
     }

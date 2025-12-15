@@ -1,6 +1,6 @@
 'use client';
 
-import { Goal, ExerciseColor } from '@/lib/types';
+import { Goal, GoalColor } from '@/lib/types';
 import { colorOptions, colorConfig } from '@/lib/colors';
 import { useState } from 'react';
 import Dialog from './Dialog';
@@ -14,7 +14,7 @@ interface ManageGoalsProps {
 
 export default function ManageGoals({ goals, onClose, onRefresh, onEditGoal }: ManageGoalsProps) {
   const [newGoalName, setNewGoalName] = useState('');
-  const [newGoalColor, setNewGoalColor] = useState<ExerciseColor>('red');
+  const [newGoalColor, setNewGoalColor] = useState<GoalColor>('red');
   const [isAdding, setIsAdding] = useState(false);
 
   const handleAddGoal = async (e: React.FormEvent) => {

@@ -1,11 +1,11 @@
-import { ExerciseColor } from './types';
+import { GoalColor } from './types';
 
 /**
  * Central color configuration for goals
  * Defines all color variations used throughout the app
  */
 export const colorConfig: Record<
-  ExerciseColor,
+  GoalColor,
   {
     label: string;
     bgClass: string; // Base background class (500 level)
@@ -77,7 +77,7 @@ export const colorConfig: Record<
  * Get all available color options for use in select/picker components
  */
 export const colorOptions = Object.entries(colorConfig).map(([value, config]) => ({
-  value: value as ExerciseColor,
+  value: value as GoalColor,
   label: config.label,
   bgClass: config.bgClass,
 }));
