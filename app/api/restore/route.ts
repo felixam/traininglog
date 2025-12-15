@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/db';
+import { withTransaction } from '@/lib/db';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BackupRow = Record<string, any>;
 
 interface BackupData {
   version: string;
   timestamp: string;
   data: {
-    goals: Record<string, unknown>[];
-    exercises: Record<string, unknown>[];
-    goal_exercises: Record<string, unknown>[];
-    goal_logs: Record<string, unknown>[];
-    exercise_logs: Record<string, unknown>[];
+    goals: BackupRow[];
+    exercises: BackupRow[];
+    goal_exercises: BackupRow[];
+    goal_logs: BackupRow[];
+    exercise_logs: BackupRow[];
   };
 }
 
@@ -33,8 +36,6 @@ function validateBackup(backup: unknown): backup is BackupData {
 }
 
 export async function POST(request: Request) {
-  const client = await pool.connect();
-
   try {
     // Parse uploaded file
     const formData = await request.formData();
@@ -68,16 +69,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Start transaction
-    await client.query('BEGIN');
-
-    try {
+    // Run restore in a transaction
+    await withTransaction(async (tx) => {
       // Truncate all tables (CASCADE handles foreign keys)
-      await client.query('TRUNCATE TABLE goals, exercises, goal_exercises, goal_logs, exercise_logs CASCADE');
+      await tx.unsafe('TRUNCATE TABLE goals, exercises, goal_exercises, goal_logs, exercise_logs CASCADE');
 
       // Restore goals
       for (const goal of backup.data.goals) {
-        await client.query(
+        await tx.unsafe(
           'INSERT INTO goals (id, name, color, display_order, created_at) VALUES ($1, $2, $3, $4, $5)',
           [goal.id, goal.name, goal.color, goal.display_order, goal.created_at]
         );
@@ -85,7 +84,7 @@ export async function POST(request: Request) {
 
       // Restore exercises
       for (const exercise of backup.data.exercises) {
-        await client.query(
+        await tx.unsafe(
           'INSERT INTO exercises (id, name, created_at) VALUES ($1, $2, $3)',
           [exercise.id, exercise.name, exercise.created_at]
         );
@@ -93,7 +92,7 @@ export async function POST(request: Request) {
 
       // Restore goal_exercises links
       for (const link of backup.data.goal_exercises) {
-        await client.query(
+        await tx.unsafe(
           'INSERT INTO goal_exercises (id, goal_id, exercise_id, created_at) VALUES ($1, $2, $3, $4)',
           [link.id, link.goal_id, link.exercise_id, link.created_at]
         );
@@ -101,7 +100,7 @@ export async function POST(request: Request) {
 
       // Restore goal_logs
       for (const log of backup.data.goal_logs) {
-        await client.query(
+        await tx.unsafe(
           'INSERT INTO goal_logs (id, goal_id, date, completed, exercise_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
           [log.id, log.goal_id, log.date, log.completed, log.exercise_id, log.created_at, log.updated_at]
         );
@@ -109,7 +108,7 @@ export async function POST(request: Request) {
 
       // Restore exercise_logs
       for (const log of backup.data.exercise_logs) {
-        await client.query(
+        await tx.unsafe(
           'INSERT INTO exercise_logs (id, exercise_id, date, weight, reps, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
           [log.id, log.exercise_id, log.date, log.weight, log.reps, log.created_at, log.updated_at]
         );
@@ -125,35 +124,26 @@ export async function POST(request: Request) {
       ];
 
       for (const { table, seq } of sequences) {
-        await client.query(`SELECT setval('${seq}', COALESCE((SELECT MAX(id) FROM ${table}), 0) + 1, false)`);
+        await tx.unsafe(`SELECT setval('${seq}', COALESCE((SELECT MAX(id) FROM ${table}), 0) + 1, false)`);
       }
+    });
 
-      // Commit transaction
-      await client.query('COMMIT');
-
-      return NextResponse.json({
-        success: true,
-        message: 'Database restored successfully',
-        counts: {
-          goals: backup.data.goals.length,
-          exercises: backup.data.exercises.length,
-          goal_exercises: backup.data.goal_exercises.length,
-          goal_logs: backup.data.goal_logs.length,
-          exercise_logs: backup.data.exercise_logs.length,
-        },
-      });
-    } catch (error) {
-      // Rollback on error
-      await client.query('ROLLBACK');
-      throw error;
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Database restored successfully',
+      counts: {
+        goals: backup.data.goals.length,
+        exercises: backup.data.exercises.length,
+        goal_exercises: backup.data.goal_exercises.length,
+        goal_logs: backup.data.goal_logs.length,
+        exercise_logs: backup.data.exercise_logs.length,
+      },
+    });
   } catch (error) {
     console.error('Restore error:', error);
     return NextResponse.json(
       { error: 'Failed to restore database' },
       { status: 500 }
     );
-  } finally {
-    client.release();
   }
 }

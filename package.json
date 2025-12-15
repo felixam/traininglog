@@ -1,5 +1,5 @@
 {
-  "name": "trainingslog-temp",
+  "name": "trainingslog",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,26 +7,31 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "init-db": "node scripts/init-db.js"
+    "init-db": "node scripts/init-db.js",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "preview:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy:cloudflare": "wrangler deploy"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
     "next": "^16.0.7",
-    "pg": "^8.16.3",
+    "postgres": "^3.4.7",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "recharts": "^3.5.1",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251213.0",
+    "@opennextjs/cloudflare": "^1.14.6",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/pg": "^8.15.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.0.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.54.0"
   }
 }

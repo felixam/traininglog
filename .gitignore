@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.open-next/
 /out/
 
 # production
@@ -46,3 +47,6 @@ local/**
 # claude code
 .claude/
 .codex/
+
+# cloudflare (contains Hyperdrive ID)
+wrangler.jsonc

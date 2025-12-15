@@ -70,6 +70,55 @@ npm run build
 npm start
 ```
 
+## Deploy to Cloudflare Workers
+
+The app can be deployed to Cloudflare Workers using Hyperdrive for PostgreSQL connectivity.
+
+### 1. Install Wrangler CLI
+
+```bash
+npm install -g wrangler
+wrangler login
+```
+
+### 2. Create Hyperdrive
+
+Create a Hyperdrive configuration that connects to your PostgreSQL database:
+
+```bash
+wrangler hyperdrive create trainingslog-db --connection-string="$DATABASE_URL"
+```
+
+Copy the returned Hyperdrive ID.
+
+### 3. Configure wrangler.jsonc
+
+Update `wrangler.jsonc` with your Hyperdrive ID:
+
+```jsonc
+{
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "your-hyperdrive-id-here"
+    }
+  ]
+}
+```
+
+### 4. Build and Deploy
+
+```bash
+npm run build:cloudflare
+npm run deploy:cloudflare
+```
+
+### Cloudflare Scripts
+
+- `npm run build:cloudflare` - Build for Cloudflare Workers
+- `npm run preview:cloudflare` - Build and preview locally
+- `npm run deploy:cloudflare` - Deploy to Cloudflare Workers
+
 ## Architecture Overview
 
 The app uses a **Goals + Exercises** architecture:
