@@ -70,3 +70,99 @@ export interface ExerciseLogEntry {
   weight?: number;
   reps?: number;
 }
+
+// Analytics types
+
+export interface CompletionSummary {
+  totalDays: number;
+  completedDays: number;
+  totalCompletions: number;
+  completionRate: number;
+  currentStreak: number;
+  longestStreak: number;
+  averagePerDay: number;
+}
+
+export interface GoalCompletionStats {
+  goalId: number;
+  goalName: string;
+  goalColor: GoalColor;
+  totalCompletions: number;
+  completionRate: number;
+  currentStreak: number;
+  longestStreak: number;
+  lastCompleted: string | null;
+}
+
+export interface CompletionTrend {
+  date: string;
+  completions: number;
+  goalsCompleted: number[];
+}
+
+export interface MonthlyTrainingDays {
+  month: string; // YYYY-MM format
+  trainingDays: number;
+}
+
+export interface CompletionAnalyticsResponse {
+  summary: CompletionSummary;
+  byGoal: GoalCompletionStats[];
+  trends: CompletionTrend[];
+  monthlyDays: MonthlyTrainingDays[];
+  dateRange: {
+    startDate: string;
+    endDate: string;
+  };
+}
+
+export interface ExerciseProgressionEntry {
+  date: string;
+  weight: number | null;
+  reps: number | null;
+  estimated1RM: number | null;
+}
+
+export interface ExerciseProgressionStats {
+  maxWeight: number | null;
+  maxWeightDate: string | null;
+  max1RM: number | null;
+  max1RMDate: string | null;
+  averageWeight: number | null;
+  averageReps: number | null;
+  weightChange: number | null;
+  weightChangePercent: number | null;
+}
+
+export interface ExerciseProgression {
+  exerciseId: number;
+  exerciseName: string;
+  goalNames: string[];
+  totalSessions: number;
+  progression: ExerciseProgressionEntry[];
+  stats: ExerciseProgressionStats;
+}
+
+export interface ProgressionAnalyticsResponse {
+  exercises: ExerciseProgression[];
+  dateRange: {
+    startDate: string;
+    endDate: string;
+  };
+}
+
+export interface HeatmapDay {
+  date: string;
+  count: number;
+  level: 0 | 1 | 2 | 3 | 4;
+}
+
+export interface HeatmapAnalyticsResponse {
+  days: HeatmapDay[];
+  dateRange: {
+    startDate: string;
+    endDate: string;
+  };
+  maxCount: number;
+  totalDays: number;
+}
