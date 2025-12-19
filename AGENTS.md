@@ -114,15 +114,18 @@ npm run init-db      # Initialize remote database (creates tables, seeds data)
 - Pre-fill buttons: "Use max", "Use last"
 - Delete button for existing logs
 
-**ManageExercises** (`components/ManageExercises.tsx`):
-- Currently manages goals (pending rename to ManageGoals)
+**ManageGoals** (`components/ManageGoals.tsx`):
 - Add/edit/delete/reorder goals
 - Color picker for goal categories
-- TODO: Add UI for managing exercise library and linking
+- Edit dialog allows linking exercises to goals
+
+**ManageExercisesLibrary** (`components/ManageExercisesLibrary.tsx`):
+- Manage exercise library (add/edit/delete exercises)
+- Accessed via "Manage Exercises" button in ManageGoals
 
 **PageHeader** (`components/PageHeader.tsx`):
 - Settings, sort by urgency toggle, plan mode toggle
-- Manage button (opens ManageExercises dialog)
+- Manage button (opens ManageGoals dialog)
 
 ### Database Schema (`schema.sql`)
 

@@ -31,6 +31,7 @@ export async function GET(request: Request) {
          gl.date,
          gl.completed,
          gl.exercise_id,
+         gl.updated_at,
          el.weight,
          el.reps
        FROM goal_logs gl
@@ -143,6 +144,7 @@ export async function GET(request: Request) {
         exercise_id: log.exercise_id,
         weight: log.weight,
         reps: log.reps,
+        updated_at: log.updated_at?.toISOString(),
       };
     });
 

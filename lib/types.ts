@@ -25,6 +25,7 @@ export interface GoalLogEntry {
   exercise_id?: number; // Which exercise was used
   weight?: number; // Weight from linked exercise log (denormalized for display)
   reps?: number; // Reps from linked exercise log (denormalized for display)
+  updated_at?: string; // Timestamp for urgency sorting
 }
 
 export interface GoalWithLogs extends Goal {
