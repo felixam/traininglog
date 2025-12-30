@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, Suspense, useMemo } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
-import { useAnalytics } from '@/lib/hooks/useAnalytics';
-import TabNavigation, { type AnalyticsTab } from '@/components/analytics/TabNavigation';
+import { useAnalytics, type AnalyticsTab } from '@/lib/hooks/useAnalytics';
+import TabNavigation from '@/components/analytics/TabNavigation';
 import DateRangePicker, { type DateRange } from '@/components/analytics/DateRangePicker';
 import CompletionTrends from '@/components/analytics/CompletionTrends';
 import WeightProgression from '@/components/analytics/WeightProgression';
@@ -16,15 +16,17 @@ function AnalyticsContent() {
 
   // Get initial values from query params
   const initialExerciseId = searchParams.get('exercise') ? parseInt(searchParams.get('exercise')!) : undefined;
-
-  // Use URL tab as source of truth, fall back to local state for user navigation
   const urlTab = searchParams.get('tab') as AnalyticsTab | null;
-  const [localTab, setLocalTab] = useState<AnalyticsTab>('trends');
-  const activeTab = urlTab || localTab;
 
-  const setActiveTab = useMemo(() => (tab: AnalyticsTab) => {
-    setLocalTab(tab);
-  }, []);
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>(urlTab || 'trends');
+
+  const handleTabChange = (tab: AnalyticsTab) => {
+    setActiveTab(tab);
+    // Clear URL params when user manually switches tabs
+    if (urlTab) {
+      router.replace('/analytics', { scroll: false });
+    }
+  };
 
   const [dateRange, setDateRange] = useState<DateRange>({
     startDate: null, // All time
@@ -34,6 +36,7 @@ function AnalyticsContent() {
   const { completion, progression, heatmap, isLoading, error } = useAnalytics({
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
+    activeTab,
   });
 
   return (
@@ -61,7 +64,7 @@ function AnalyticsContent() {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <TabNavigation activeTab={activeTab} onChange={setActiveTab} />
+          <TabNavigation activeTab={activeTab} onChange={handleTabChange} />
           <DateRangePicker value={dateRange} onChange={setDateRange} />
         </div>
 

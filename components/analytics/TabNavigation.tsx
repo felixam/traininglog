@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-
-export type AnalyticsTab = 'trends' | 'progression' | 'heatmap';
+import type { AnalyticsTab } from '@/lib/hooks/useAnalytics';
 
 interface TabNavigationProps {
   activeTab: AnalyticsTab;
