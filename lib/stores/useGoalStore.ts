@@ -49,12 +49,52 @@ const applyLogUpdate = (goals: GoalWithLogs[], payload: LogMutationPayload): Goa
       reps: payload.reps,
     };
 
+    // Update linkedExercises history if this log sets a new max weight
+    const updatedLinkedExercises = goal.linkedExercises?.map((exercise) => {
+      if (exercise.id !== payload.exerciseId || !payload.weight) return exercise;
+
+      const currentMax = exercise.history?.maxWeight?.weight ?? 0;
+      if (payload.weight > currentMax) {
+        return {
+          ...exercise,
+          history: {
+            ...exercise.history,
+            maxWeight: {
+              weight: payload.weight,
+              reps: payload.reps,
+              date: payload.date,
+            },
+            lastLog: {
+              weight: payload.weight,
+              reps: payload.reps,
+              date: payload.date,
+            },
+          },
+        };
+      }
+
+      // Update lastLog even if not a new max
+      return {
+        ...exercise,
+        history: {
+          ...exercise.history,
+          maxWeight: exercise.history?.maxWeight ?? null,
+          lastLog: {
+            weight: payload.weight,
+            reps: payload.reps,
+            date: payload.date,
+          },
+        },
+      };
+    });
+
     return {
       ...goal,
       logs: {
         ...goal.logs,
         [payload.date]: nextLog,
       },
+      linkedExercises: updatedLinkedExercises,
       lastCompletedExerciseId: payload.exerciseId || goal.lastCompletedExerciseId,
     };
   });
