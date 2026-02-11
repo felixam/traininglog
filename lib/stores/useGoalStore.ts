@@ -53,8 +53,11 @@ const applyLogUpdate = (goals: GoalWithLogs[], payload: LogMutationPayload): Goa
     const updatedLinkedExercises = goal.linkedExercises?.map((exercise) => {
       if (exercise.id !== payload.exerciseId || !payload.weight) return exercise;
 
-      const currentMax = exercise.history?.maxWeight?.weight ?? 0;
-      if (payload.weight > currentMax) {
+      const currentMaxWeight = exercise.history?.maxWeight?.weight ?? 0;
+      const currentMaxReps = exercise.history?.maxWeight?.reps ?? 0;
+      const isNewMax = payload.weight > currentMaxWeight || 
+        (payload.weight === currentMaxWeight && (payload.reps ?? 0) > currentMaxReps);
+      if (isNewMax) {
         return {
           ...exercise,
           history: {

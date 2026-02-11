@@ -86,7 +86,7 @@ export async function GET(request: Request) {
         `SELECT DISTINCT ON (exercise_id) exercise_id, weight, reps, date
          FROM exercise_logs
          WHERE exercise_id = ANY($1::int[]) AND weight IS NOT NULL
-         ORDER BY exercise_id, weight DESC, date DESC`,
+         ORDER BY exercise_id, weight DESC, reps DESC, date DESC`,
         [exerciseIdArray]
       );
 
