@@ -1,0 +1,32 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "trainingslog",
+	"compatibility_date": "2026-02-10",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"services": [
+		{
+			// Self-reference service binding, the service name must match the worker name
+			// see https://opennext.js.org/cloudflare/caching
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "trainingslog"
+		}
+	],
+	// R2 caching disabled - token lacks R2 permission
+	// "r2_buckets": [],
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "d44c6492a4b840e881a2d2e58e29c8ab"
+		}
+	],
+	"images": {
+		// Enable image optimization
+		// see https://opennext.js.org/cloudflare/howtos/image
+		"binding": "IMAGES"
+	}
+}
