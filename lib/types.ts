@@ -32,6 +32,7 @@ export interface GoalWithLogs extends Goal {
   logs: Record<string, GoalLogEntry>; // date -> log entry mapping
   linkedExercises?: ExerciseWithHistory[]; // Exercises that can be linked to this goal
   lastCompletedExerciseId?: number; // Most recent exercise used to complete this goal
+  last_completed_at?: string; // Global MAX(updated_at) across all completed logs (ignores visibleDays window)
 }
 
 // Exercises (specific movements with weight/reps tracking)

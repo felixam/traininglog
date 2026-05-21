@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     let effectiveStartDate: string = startDate || endDate;
     if (!startDate) {
       const earliestResult = await query(
-        'SELECT MIN(date)::text as min_date FROM goal_logs WHERE completed = true'
+        'SELECT MIN(date) as min_date FROM goal_logs WHERE completed = 1'
       );
       effectiveStartDate = (earliestResult.rows[0]?.min_date as string) || endDate;
     }
@@ -79,9 +79,9 @@ export async function GET(request: NextRequest) {
 
     // Get all completed logs in range
     let logsQuery = `
-      SELECT goal_id, date::text as date
+      SELECT goal_id, date
       FROM goal_logs
-      WHERE completed = true
+      WHERE completed = 1
         AND date >= $1 AND date <= $2
     `;
     const logsParams: (string | number)[] = [effectiveStartDate, endDate];

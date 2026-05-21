@@ -5,7 +5,7 @@ import type { HeatmapAnalyticsResponse, HeatmapDay } from '@/lib/types';
 
 interface LogRow {
   date: string;
-  count: string;
+  count: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -17,9 +17,9 @@ export async function GET(request: NextRequest) {
 
     // Get completion counts by date
     let logsQuery = `
-      SELECT date::text as date, COUNT(*) as count
+      SELECT date, COUNT(*) as count
       FROM goal_logs
-      WHERE completed = true
+      WHERE completed = 1
         AND date >= $1 AND date <= $2
     `;
     const logsParams: (string | number)[] = [startDate, endDate];
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     let maxCount = 0;
 
     logs.forEach(log => {
-      const count = parseInt(log.count);
+      const count = Number(log.count);
       countByDate.set(log.date, count);
       maxCount = Math.max(maxCount, count);
     });

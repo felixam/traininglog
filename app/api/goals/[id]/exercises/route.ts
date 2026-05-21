@@ -45,39 +45,34 @@ export async function POST(
       );
     }
 
-    // Check if goal exists
     const goalCheck = await query('SELECT id FROM goals WHERE id = $1', [id]);
     if (goalCheck.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Goal not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Goal not found' }, { status: 404 });
     }
 
-    // Check if exercise exists
     const exerciseCheck = await query('SELECT id FROM exercises WHERE id = $1', [exercise_id]);
     if (exerciseCheck.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Exercise not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Exercise not found' }, { status: 404 });
     }
 
-    // Link exercise to goal (UNIQUE constraint will prevent duplicates)
+    // ON CONFLICT DO NOTHING ... RETURNING returns no row when the link already exists.
     const result = await query(
-      'INSERT INTO goal_exercises (goal_id, exercise_id) VALUES ($1, $2) RETURNING *',
+      `INSERT INTO goal_exercises (goal_id, exercise_id)
+       VALUES ($1, $2)
+       ON CONFLICT(goal_id, exercise_id) DO NOTHING
+       RETURNING *`,
       [id, exercise_id]
     );
 
-    return NextResponse.json(result.rows[0], { status: 201 });
-  } catch (error: unknown) {
-    // Check for unique constraint violation (duplicate link)
-    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+    if (result.rows.length === 0) {
       return NextResponse.json(
         { error: 'Exercise already linked to this goal' },
         { status: 409 }
       );
     }
+
+    return NextResponse.json(result.rows[0], { status: 201 });
+  } catch (error) {
     console.error('Error linking exercise to goal:', error);
     return NextResponse.json(
       { error: 'Failed to link exercise to goal' },

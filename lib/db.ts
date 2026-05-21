@@ -1,144 +1,70 @@
-import postgres from 'postgres';
+import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 
-type QueryParam = string | number | boolean | null | QueryParam[];
+type QueryParam = string | number | boolean | null;
 
-interface HyperdriveBinding {
-  connectionString: string;
-}
-
-// Cached sql client for non-Hyperdrive environments only
-let sql: ReturnType<typeof postgres> | null = null;
-
-interface ConnectionInfo {
-  connectionString: string;
-  isHyperdrive: boolean;
-}
-
-async function getConnectionInfo(): Promise<ConnectionInfo> {
-  // Try to get Hyperdrive connection string in Cloudflare Workers
-  try {
-    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
-    const { env } = await getCloudflareContext();
-    const hyperdrive = (env as Record<string, unknown>).HYPERDRIVE as HyperdriveBinding | undefined;
-    if (hyperdrive?.connectionString) {
-      return { connectionString: hyperdrive.connectionString, isHyperdrive: true };
-    }
-  } catch {
-    // Not in Cloudflare context, fall back to DATABASE_URL
-  }
-  return { connectionString: process.env.DATABASE_URL || '', isHyperdrive: false };
-}
-
-function createHyperdriveClient(connectionString: string) {
-  return postgres(connectionString, {
-    max: 1,
-    idle_timeout: 0,
-    connect_timeout: 10,
-    prepare: false,
-  });
-}
-
-async function getPooledClient(): Promise<ReturnType<typeof postgres>> {
-  const { connectionString } = await getConnectionInfo();
-
-  if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-
-  if (sql) return sql;
-
-  sql = postgres(connectionString, {
-    max: 10,
-    idle_timeout: 20,
-    connect_timeout: 10,
-    max_lifetime: 60 * 30,
-    onclose: () => {
-      sql = null;
-    },
-  });
-
-  return sql;
-}
-
-// Row type for query results - permissive for backwards compatibility
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
-// Query result interface matching pg's QueryResult
 interface QueryResult {
   rows: Row[];
   rowCount: number;
 }
 
-// Export query function that mimics pg's interface
-export const query = async (
+async function getDb(): Promise<D1Database> {
+  const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+  const { env } = await getCloudflareContext({ async: true });
+  const db = (env as Record<string, unknown>).DB as D1Database | undefined;
+  if (!db) {
+    throw new Error('D1 binding `DB` is not available. Check wrangler.jsonc and next.config.ts.');
+  }
+  return db;
+}
+
+// API routes were written for pg-style $1, $2 placeholders. D1 uses anonymous ?.
+// Translate so callers stay readable.
+function normalize(sql: string): string {
+  return sql.replace(/\$(\d+)/g, '?');
+}
+
+function bind(stmt: D1PreparedStatement, params: QueryParam[] | undefined): D1PreparedStatement {
+  if (!params || params.length === 0) return stmt;
+  return stmt.bind(...params);
+}
+
+export async function query(
   text: string,
   params?: QueryParam[]
-): Promise<QueryResult> => {
+): Promise<QueryResult> {
   const start = Date.now();
-  const { connectionString, isHyperdrive } = await getConnectionInfo();
-
-  if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-
-  const client = isHyperdrive
-    ? createHyperdriveClient(connectionString)
-    : await getPooledClient();
+  const db = await getDb();
+  const stmt = bind(db.prepare(normalize(text)), params);
 
   try {
-    const rows = await client.unsafe(text, params as (string | number | boolean | null)[]);
-
-    const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: rows.length });
-
-    return {
-      rows: rows as Row[],
-      rowCount: rows.length,
-    };
+    const result = await stmt.all<Row>();
+    const rows = result.results ?? [];
+    console.log('Executed query', { text, duration: Date.now() - start, rows: rows.length });
+    return { rows, rowCount: rows.length };
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
-  } finally {
-    if (isHyperdrive) {
-      await client.end();
-    }
   }
 }
 
-// Transaction helper that handles Hyperdrive connection lifecycle
-export async function withTransaction<T>(
-  fn: (tx: postgres.TransactionSql) => Promise<T>
-): Promise<T> {
-  const { connectionString, isHyperdrive } = await getConnectionInfo();
-
-  if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-
-  const client = isHyperdrive
-    ? createHyperdriveClient(connectionString)
-    : await getPooledClient();
-
-  try {
-    const result = await client.begin(fn);
-    return result as T;
-  } finally {
-    if (isHyperdrive) {
-      await client.end();
-    }
-  }
+// D1 has no interactive transactions; batch() runs the array atomically.
+// Each entry is { sql, params? } — same shape as query().
+export interface BatchStatement {
+  sql: string;
+  params?: QueryParam[];
 }
 
-// Export sql getter for advanced usage - caller must handle cleanup for Hyperdrive
-export async function getDb(): Promise<ReturnType<typeof postgres>> {
-  const { connectionString, isHyperdrive } = await getConnectionInfo();
-
-  if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-
-  return isHyperdrive
-    ? createHyperdriveClient(connectionString)
-    : await getPooledClient();
+export async function batch(statements: BatchStatement[]): Promise<QueryResult[]> {
+  const db = await getDb();
+  const prepared = statements.map(({ sql, params }) =>
+    bind(db.prepare(normalize(sql)), params)
+  );
+  const results = await db.batch<Row>(prepared);
+  return results.map(r => ({
+    rows: r.results ?? [],
+    rowCount: r.results?.length ?? 0,
+  }));
 }

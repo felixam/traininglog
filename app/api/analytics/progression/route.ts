@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     let effectiveStartDate: string = startDate || endDate;
     if (!startDate) {
       const earliestResult = await query(
-        'SELECT MIN(date)::text as min_date FROM exercise_logs WHERE weight IS NOT NULL'
+        'SELECT MIN(date) as min_date FROM exercise_logs WHERE weight IS NOT NULL'
       );
       effectiveStartDate = (earliestResult.rows[0]?.min_date as string) || endDate;
     }
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     // Get exercise logs with weight data
     let logsQuery = `
-      SELECT exercise_id, date::text as date, weight, reps
+      SELECT exercise_id, date, weight, reps
       FROM exercise_logs
       WHERE date >= $1 AND date <= $2
         AND weight IS NOT NULL

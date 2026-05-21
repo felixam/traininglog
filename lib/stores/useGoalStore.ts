@@ -42,12 +42,22 @@ const applyLogUpdate = (goals: GoalWithLogs[], payload: LogMutationPayload): Goa
   goals.map((goal) => {
     if (goal.id !== payload.goalId) return goal;
 
+    // Composite urgency key = workout date + current time-of-day. Must match the
+    // server's `date || ' ' || substr(updated_at, 12)` shape so optimistic and
+    // refetched values sort against each other consistently.
+    const nowIso = new Date().toISOString();
+    const compositeKey = `${payload.date} ${nowIso.substring(11)}`;
+
     const nextLog: GoalLogEntry = {
       completed: true,
       exercise_id: payload.exerciseId,
       weight: payload.weight,
       reps: payload.reps,
+      updated_at: nowIso,
     };
+
+    const prev = goal.last_completed_at;
+    const nextLastCompletedAt = prev && prev > compositeKey ? prev : compositeKey;
 
     return {
       ...goal,
@@ -56,8 +66,17 @@ const applyLogUpdate = (goals: GoalWithLogs[], payload: LogMutationPayload): Goa
         [payload.date]: nextLog,
       },
       lastCompletedExerciseId: payload.exerciseId || goal.lastCompletedExerciseId,
+      last_completed_at: nextLastCompletedAt,
     };
   });
+
+// Extract time-of-day from an updated_at string in either format:
+// SQL "YYYY-MM-DD HH:MM:SS.SSS" or ISO "YYYY-MM-DDTHH:MM:SS.sssZ".
+const timeOfDay = (ts: string | undefined): string => {
+  if (!ts) return '';
+  const sep = Math.max(ts.indexOf('T'), ts.indexOf(' '));
+  return sep >= 0 ? ts.substring(sep + 1) : '';
+};
 
 const applyLogDeletion = (goals: GoalWithLogs[], goalId: number, date: string): GoalWithLogs[] =>
   goals.map((goal) => {
@@ -65,9 +84,22 @@ const applyLogDeletion = (goals: GoalWithLogs[], goalId: number, date: string): 
 
     const rest = { ...goal.logs };
     delete rest[date];
+
+    // Recompute last_completed_at from the visible window using the same
+    // composite shape the server emits. Older logs outside the window are
+    // invisible here; the next /api/logs refetch corrects any drift.
+    const remainingComposites = Object.entries(rest)
+      .filter(([, log]) => log.completed)
+      .map(([d, log]) => {
+        const t = timeOfDay(log.updated_at);
+        return t ? `${d} ${t}` : d;
+      });
+    const newest = remainingComposites.sort().reverse()[0];
+
     return {
       ...goal,
       logs: rest,
+      last_completed_at: newest,
     };
   });
 

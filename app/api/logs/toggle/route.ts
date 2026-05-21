@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { batch, query } from '@/lib/db';
 
 // POST create or update goal log (with optional exercise tracking)
 export async function POST(request: Request) {
@@ -14,72 +14,43 @@ export async function POST(request: Request) {
       );
     }
 
-    // Start a transaction
-    await query('BEGIN');
+    const exId = exercise_id ?? null;
 
-    try {
-      // Check if goal log exists
-      const existingGoalLog = await query(
-        'SELECT * FROM goal_logs WHERE goal_id = $1 AND date = $2',
-        [goal_id, date]
-      );
+    // strftime('%f') gives millisecond precision so multiple toggles in the same
+    // second keep a stable order (CURRENT_TIMESTAMP is only whole-second).
+    const NOW_MS = `strftime('%Y-%m-%d %H:%M:%f', 'now')`;
 
-      // Upsert goal log
-      let goalLogResult;
-      if (existingGoalLog.rows.length > 0) {
-        // Update existing goal log
-        goalLogResult = await query(
-          `UPDATE goal_logs
-           SET completed = true,
-               exercise_id = $3,
-               updated_at = CURRENT_TIMESTAMP
-           WHERE goal_id = $1 AND date = $2
-           RETURNING *`,
-          [goal_id, date, exercise_id || null]
-        );
-      } else {
-        // Create new goal log
-        goalLogResult = await query(
-          `INSERT INTO goal_logs (goal_id, date, completed, exercise_id)
-           VALUES ($1, $2, true, $3)
-           RETURNING *`,
-          [goal_id, date, exercise_id || null]
-        );
-      }
+    const statements = [
+      {
+        sql: `INSERT INTO goal_logs (goal_id, date, completed, exercise_id, updated_at)
+              VALUES ($1, $2, 1, $3, ${NOW_MS})
+              ON CONFLICT(goal_id, date) DO UPDATE
+              SET completed = 1,
+                  exercise_id = excluded.exercise_id,
+                  updated_at = ${NOW_MS}
+              RETURNING *`,
+        params: [goal_id, date, exId],
+      },
+    ];
 
-      // If exercise_id is provided, also create/update exercise log
-      if (exercise_id) {
-        const existingExerciseLog = await query(
-          'SELECT * FROM exercise_logs WHERE exercise_id = $1 AND date = $2',
-          [exercise_id, date]
-        );
-
-        if (existingExerciseLog.rows.length > 0) {
-          // Update existing exercise log
-          await query(
-            `UPDATE exercise_logs
-             SET weight = $3,
-                 reps = $4,
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE exercise_id = $1 AND date = $2`,
-            [exercise_id, date, weight || null, reps || null]
-          );
-        } else {
-          // Create new exercise log
-          await query(
-            `INSERT INTO exercise_logs (exercise_id, date, weight, reps)
-             VALUES ($1, $2, $3, $4)`,
-            [exercise_id, date, weight || null, reps || null]
-          );
-        }
-      }
-
-      await query('COMMIT');
-      return NextResponse.json(goalLogResult.rows[0]);
-    } catch (error) {
-      await query('ROLLBACK');
-      throw error;
+    if (exId !== null) {
+      statements.push({
+        sql: `INSERT INTO exercise_logs (exercise_id, date, weight, reps, updated_at)
+              VALUES ($1, $2, $3, $4, ${NOW_MS})
+              ON CONFLICT(exercise_id, date) DO UPDATE
+              SET weight = excluded.weight,
+                  reps = excluded.reps,
+                  updated_at = ${NOW_MS}`,
+        params: [exId, date, weight ?? null, reps ?? null],
+      });
     }
+
+    const results = await batch(statements);
+    const goalLog = results[0].rows[0];
+    return NextResponse.json({
+      ...goalLog,
+      completed: Boolean(goalLog?.completed),
+    });
   } catch (error) {
     console.error('Error saving goal log:', error);
     return NextResponse.json(
@@ -103,36 +74,27 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Start a transaction
-    await query('BEGIN');
+    const existing = await query(
+      'SELECT exercise_id FROM goal_logs WHERE goal_id = $1 AND date = $2',
+      [goal_id, date]
+    );
 
-    try {
-      // Get the goal log to check if it has an associated exercise
-      const goalLog = await query(
-        'SELECT exercise_id FROM goal_logs WHERE goal_id = $1 AND date = $2',
-        [goal_id, date]
-      );
+    const linkedExerciseId = existing.rows[0]?.exercise_id ?? null;
 
-      if (goalLog.rows.length > 0 && goalLog.rows[0].exercise_id) {
-        // Delete associated exercise log
-        await query(
-          'DELETE FROM exercise_logs WHERE exercise_id = $1 AND date = $2',
-          [goalLog.rows[0].exercise_id, date]
-        );
-      }
-
-      // Delete goal log (this is the main deletion)
-      await query(
-        'DELETE FROM goal_logs WHERE goal_id = $1 AND date = $2',
-        [goal_id, date]
-      );
-
-      await query('COMMIT');
-      return NextResponse.json({ deleted: true });
-    } catch (error) {
-      await query('ROLLBACK');
-      throw error;
+    const statements = [];
+    if (linkedExerciseId !== null) {
+      statements.push({
+        sql: 'DELETE FROM exercise_logs WHERE exercise_id = $1 AND date = $2',
+        params: [linkedExerciseId, date],
+      });
     }
+    statements.push({
+      sql: 'DELETE FROM goal_logs WHERE goal_id = $1 AND date = $2',
+      params: [goal_id, date],
+    });
+
+    await batch(statements);
+    return NextResponse.json({ deleted: true });
   } catch (error) {
     console.error('Error deleting goal log:', error);
     return NextResponse.json(

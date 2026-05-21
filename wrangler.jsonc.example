@@ -3,10 +3,14 @@
   //
   // Setup:
   // 1. Copy this file to wrangler.jsonc
-  // 2. Create a Hyperdrive instance:
-  //    wrangler hyperdrive create trainingslog-db --connection-string="postgresql://user:pass@host:5432/dbname"
-  // 3. Replace YOUR_HYPERDRIVE_ID below with the ID from step 2
-  // 4. Deploy: npm run deploy:cloudflare
+  // 2. Create the D1 database:
+  //      npx wrangler d1 create trainingslog
+  // 3. Replace YOUR_D1_DATABASE_ID below with the id printed by step 2
+  // 4. Initialize the schema:
+  //      npx wrangler d1 execute trainingslog --remote --file=schema.sql
+  // 5. (Optional) Import existing data:
+  //      npx wrangler d1 execute trainingslog --remote --file=local/trainingslog-d1-import.sql
+  // 6. Deploy: npm run deploy:cloudflare
 
   "name": "trainingslog",
   "main": ".open-next/worker.js",
@@ -16,10 +20,11 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-  "hyperdrive": [
+  "d1_databases": [
     {
-      "binding": "HYPERDRIVE",
-      "id": "YOUR_HYPERDRIVE_ID"
+      "binding": "DB",
+      "database_name": "trainingslog",
+      "database_id": "YOUR_D1_DATABASE_ID"
     }
   ]
 }

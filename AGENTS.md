@@ -4,15 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Training log webapp for tracking goals and exercises with weight/reps tracking. Users can complete goals directly or via linked exercises. Single-user app with customizable goals, exercises, and configurable visible days (1-30).
 
-**Stack**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, PostgreSQL (remote), Zustand (client store)
+**Stack**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Cloudflare D1 (SQLite, accessed via Workers binding), Zustand (client store), deployed via `@opennextjs/cloudflare`.
 
 ## Development Commands
 
 ```bash
-npm run dev          # Start dev server on localhost:3000
-npm run build        # Production build
-npm start            # Run production server
-npm run init-db      # Initialize remote database (creates tables, seeds data)
+npm run dev                 # Start dev server on localhost:3000 (uses local D1 via initOpenNextCloudflareForDev)
+npm run build               # Next production build (TypeScript check)
+npm run build:cloudflare    # OpenNext Cloudflare build (.open-next/worker.js)
+npm run preview:cloudflare  # Build + run locally under workerd
+npm run deploy:cloudflare   # Deploy to Cloudflare
+
+npm run db:create           # wrangler d1 create trainingslog (one-time)
+npm run db:init:local       # Apply schema.sql to local D1
+npm run db:init:remote      # Apply schema.sql to remote D1
+npm run db:import:local     # Import local/trainingslog-d1-import.sql locally
+npm run db:import:remote    # Import local/trainingslog-d1-import.sql to remote
 ```
 
 ## Rules
@@ -21,15 +28,16 @@ npm run init-db      # Initialize remote database (creates tables, seeds data)
 
 ## Environment Setup
 
-- Requires `DATABASE_URL` environment variable (PostgreSQL connection string)
-- No local PostgreSQL needed - connects to remote database only
+- Requires a Cloudflare D1 database bound as `DB` in `wrangler.jsonc` (`d1_databases[]`).
+- No external database URL — D1 is accessed directly via the Workers binding.
+- Local dev gets the binding via `initOpenNextCloudflareForDev()` in `next.config.ts`, which wires `next dev` to the local D1 state managed by wrangler.
 
 ## Architecture
 
 ### Database Layer (`lib/db.ts`)
-- Connection pool using `pg` library
-- Reads `process.env.DATABASE_URL`
-- Exports `query()` function and `pool` for all database operations
+- Resolves the D1 binding via `getCloudflareContext().env.DB`.
+- `query(sql, params)` returns `{ rows, rowCount }` and translates pg-style `$1, $2` placeholders to D1's `?`.
+- `batch(statements)` runs an array of `{ sql, params }` atomically (D1 has no interactive transactions).
 
 ### Data Model (`lib/types.ts`)
 
@@ -129,6 +137,8 @@ npm run init-db      # Initialize remote database (creates tables, seeds data)
 
 ### Database Schema (`schema.sql`)
 
+SQLite dialect. All primary keys are `INTEGER PRIMARY KEY AUTOINCREMENT`, dates/timestamps are `TEXT` (YYYY-MM-DD / ISO-ish), booleans are `INTEGER` (0/1), weights are `REAL`.
+
 **goals**:
 - id, name, color, display_order, created_at
 
@@ -140,7 +150,7 @@ npm run init-db      # Initialize remote database (creates tables, seeds data)
 - UNIQUE(goal_id, exercise_id)
 
 **goal_logs**:
-- id, goal_id (FK), date, completed, exercise_id (FK, nullable), created_at, updated_at
+- id, goal_id (FK), date, completed (0/1), exercise_id (FK, nullable), created_at, updated_at
 - UNIQUE(goal_id, date)
 - ON DELETE CASCADE from goals
 
@@ -149,7 +159,7 @@ npm run init-db      # Initialize remote database (creates tables, seeds data)
 - UNIQUE(exercise_id, date)
 - ON DELETE CASCADE from exercises
 
-**Indexes**: All foreign keys and date columns are indexed for performance
+**Indexes**: All foreign keys and date columns are indexed for performance.
 
 ### Hooks & Utils
 
@@ -193,10 +203,21 @@ npm run init-db      # Initialize remote database (creates tables, seeds data)
 
 ## Database Initialization
 
-`npm run init-db` - Executes `schema.sql`, creates all tables, seeds 12 default goals
+First-time setup:
+1. `npm run db:create` — creates the D1 database, prints a `database_id`.
+2. Paste the `database_id` into `wrangler.jsonc` (replacing `REPLACE_WITH_D1_DATABASE_ID`).
+3. `npm run db:init:remote` — applies `schema.sql` and seeds 12 default goals.
+4. (Optional) `npm run db:import:remote` — imports `local/trainingslog-d1-import.sql` (overwrites all data with the rows from that file).
+
+The local dev DB lives under `.wrangler/state/`. Use the `*:local` script variants for it.
+
+## Migrating from Postgres
+
+`scripts/convert-pg-dump.mjs` converts a `pg_dump --column-inserts` export of the public schema into a D1-ready SQL file: `node scripts/convert-pg-dump.mjs <input.sql> <output.sql>`.
 
 ## Quality Assurance
 
 To make sure the code you wrote is correct, run:
 - `npm run lint` - ESLint validation
 - `npm run build` - TypeScript type checking and production build
+- `npm run build:cloudflare` - OpenNext bundle for Cloudflare
