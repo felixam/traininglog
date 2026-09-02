@@ -14,7 +14,7 @@
     "db:import:remote": "wrangler d1 execute trainingslog --remote --file=local/trainingslog-d1-import.sql",
     "build:cloudflare": "opennextjs-cloudflare build",
     "preview:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy:cloudflare": "wrangler deploy"
+    "deploy:cloudflare": "opennextjs-cloudflare build && wrangler deploy"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
