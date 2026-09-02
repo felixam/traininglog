@@ -43,6 +43,8 @@ next-env.d.ts
 
 # local custom scripts or backups
 local/**
+trainingslog-backup-*.json
+trainingslog-local-*.json
 
 # claude code
 .claude/

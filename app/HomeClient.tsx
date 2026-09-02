@@ -6,8 +6,10 @@ import EditGoalDialog from '@/components/EditGoalDialog';
 import LogDialog from '@/components/LogDialog';
 import SettingsDialog from '@/components/SettingsDialog';
 import RestoreConfirmDialog from '@/components/RestoreConfirmDialog';
+import LocalExportDialog from '@/components/LocalExportDialog';
 import PageHeader from '@/components/PageHeader';
 import GoalTable from '@/components/GoalTable';
+import { buildLocalExport, type AuthProbe, type LocalExportPayload } from '@/lib/localExport';
 import { GoalLogEntry, ExerciseWithHistory, Goal } from '@/lib/types';
 import { useSettings } from '@/lib/hooks/useSettings';
 import { usePlanMode } from '@/lib/hooks/usePlanMode';
@@ -57,6 +59,7 @@ export default function HomeClient() {
       };
     };
   } | null>(null);
+  const [localExport, setLocalExport] = useState<LocalExportPayload | null>(null);
 
   // Toggle handler - plan mode or log dialog
   const handleToggle = (goalId: number, date: string) => {
@@ -121,6 +124,32 @@ export default function HomeClient() {
       console.error('Error creating backup:', error);
       alert('Failed to create backup');
     }
+  };
+
+  // Export whatever this device is holding locally, including log mutations the
+  // server never accepted. Read-only: nothing here mutates local or server state.
+  const handleExportLocal = async () => {
+    let auth: AuthProbe | null = null;
+    try {
+      const response = await fetch('/api/auth/me');
+      auth = {
+        ok: response.ok,
+        status: response.status,
+        body: await response.json().catch(() => null),
+      };
+    } catch (error) {
+      console.error('Auth probe failed:', error);
+    }
+
+    setShowSettings(false);
+    setLocalExport(
+      buildLocalExport({
+        storage: window.localStorage,
+        auth,
+        exportedAt: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+      })
+    );
   };
 
   // Restore database - file selection
@@ -305,6 +334,7 @@ export default function HomeClient() {
           }}
           onBackup={handleBackup}
           onRestore={handleRestore}
+          onExportLocal={handleExportLocal}
         />
       )}
 
@@ -315,6 +345,11 @@ export default function HomeClient() {
           onConfirm={handleRestoreConfirmed}
           onCancel={() => setRestoreConfirmData(null)}
         />
+      )}
+
+      {/* Local export Dialog */}
+      {localExport && (
+        <LocalExportDialog payload={localExport} onClose={() => setLocalExport(null)} />
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import { AppSettings } from '@/lib/settings';
 import { useEffect, useState } from 'react';
 import Dialog from './Dialog';
 import AddUserDialog from './AddUserDialog';
+import { useGoalStore } from '@/lib/stores/useGoalStore';
 
 interface SettingsDialogProps {
   currentSettings: AppSettings;
@@ -13,6 +14,7 @@ interface SettingsDialogProps {
   onManageExercises: () => void;
   onBackup: () => void;
   onRestore: () => void;
+  onExportLocal: () => void;
 }
 
 export default function SettingsDialog({
@@ -23,10 +25,12 @@ export default function SettingsDialog({
   onManageExercises,
   onBackup,
   onRestore,
+  onExportLocal,
 }: SettingsDialogProps) {
   const [visibleDays, setVisibleDays] = useState(currentSettings.visibleDays.toString());
   const [username, setUsername] = useState<string | null>(null);
   const [showAddUser, setShowAddUser] = useState(false);
+  const pendingCount = useGoalStore((state) => state.pendingLogMutations.length);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -146,6 +150,24 @@ export default function SettingsDialog({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
               <span>Restore Database</span>
+            </button>
+          </div>
+
+          {/* Export unsaved local changes */}
+          <div>
+            <button
+              onClick={onExportLocal}
+              className="w-full px-4 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 text-gray-300 rounded-lg transition-colors flex items-center gap-3"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4-4m0 0L8 3m4-4v12" />
+              </svg>
+              <span className="flex-1 text-left">Export unsaved changes</span>
+              {pendingCount > 0 && (
+                <span className="px-2 py-0.5 bg-amber-600 text-white text-xs rounded-full">
+                  {pendingCount}
+                </span>
+              )}
             </button>
           </div>
 
