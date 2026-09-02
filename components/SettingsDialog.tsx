@@ -31,6 +31,8 @@ export default function SettingsDialog({
   const [username, setUsername] = useState<string | null>(null);
   const [showAddUser, setShowAddUser] = useState(false);
   const pendingCount = useGoalStore((state) => state.pendingLogMutations.length);
+  const clearLocalData = useGoalStore((state) => state.clearLocalData);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -41,9 +43,20 @@ export default function SettingsDialog({
       .catch(() => {});
   }, []);
 
-  const handleLogout = async () => {
+  const logOut = async () => {
+    // Purge before leaving, so the next user does not inherit this user's cache
+    // and queue.
+    clearLocalData();
     await fetch('/api/auth/logout', { method: 'POST' });
     window.location.assign('/login');
+  };
+
+  const handleLogout = () => {
+    if (pendingCount > 0) {
+      setConfirmLogout(true);
+      return;
+    }
+    void logOut();
   };
 
   const handleSave = () => {
@@ -226,6 +239,43 @@ export default function SettingsDialog({
       </div>
     </Dialog>
     {showAddUser && <AddUserDialog onClose={() => setShowAddUser(false)} />}
+    {confirmLogout && (
+      <Dialog onClose={() => setConfirmLogout(false)}>
+        <h2 className="text-xl font-bold mb-3">Unsaved logs</h2>
+        <p className="text-sm text-gray-300 mb-2">
+          <span className="font-semibold text-amber-400">{pendingCount}</span> log
+          {pendingCount === 1 ? '' : 's'} on this device {pendingCount === 1 ? 'has' : 'have'} not
+          reached the server yet.
+        </p>
+        <p className="text-sm text-gray-400 mb-6">
+          Logging out discards {pendingCount === 1 ? 'it' : 'them'}. Export first if you want to
+          keep {pendingCount === 1 ? 'it' : 'them'}.
+        </p>
+        <div className="space-y-2">
+          <button
+            onClick={() => {
+              setConfirmLogout(false);
+              onExportLocal();
+            }}
+            className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+          >
+            Export first
+          </button>
+          <button
+            onClick={() => setConfirmLogout(false)}
+            className="w-full px-4 py-3 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => void logOut()}
+            className="w-full px-4 py-3 bg-gray-800 hover:bg-gray-700 border border-red-900 text-red-300 rounded-lg transition-colors"
+          >
+            Discard and log out
+          </button>
+        </div>
+      </Dialog>
+    )}
     </>
   );
 }

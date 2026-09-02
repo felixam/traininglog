@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { sortGoals } from '../goalUtils';
+import { classifyQueueResponse } from '../queueResult';
 import { GoalLogEntry, GoalWithLogs } from '../types';
 
 type LogMutationPayload = {
@@ -31,6 +32,7 @@ interface GoalStoreState {
   optimisticUpsertLog: (payload: LogMutationPayload) => void;
   optimisticDeleteLog: (goalId: number, date: string) => void;
   processQueue: () => Promise<void>;
+  clearLocalData: () => void;
 }
 
 // An expired/invalid session surfaces as a 401 from the API. Bounce to login.
@@ -225,13 +227,23 @@ export const useGoalStore = create<GoalStoreState>()(
               });
             }
 
-            if (response.status === 401) {
+            const result = classifyQueueResponse(response.status);
+
+            if (result === 'auth') {
               redirectToLogin();
               break;
             }
 
-            if (!response.ok) {
+            // 'retry' is transient — leave it at the head and try again later.
+            if (result === 'retry') {
               break;
+            }
+
+            // 'drop' means the server will never accept it (most often a goal
+            // belonging to another user). Discarding it is what keeps one bad
+            // mutation from blocking everything queued behind it.
+            if (result === 'drop') {
+              console.warn(`Discarding rejected log mutation (${response.status}):`, next);
             }
 
             set((state) => ({
@@ -244,6 +256,17 @@ export const useGoalStore = create<GoalStoreState>()(
           set({ isProcessingQueue: false });
         }
       },
+      // Called on logout: the cache and the queue belong to the user who is
+      // leaving, and firing their mutations at the next session's account is
+      // how logs end up rejected as "not found".
+      clearLocalData: () =>
+        set({
+          goals: [],
+          pendingLogMutations: [],
+          lastFetchedAt: undefined,
+          lastVisibleDays: undefined,
+          error: null,
+        }),
     }),
     {
       name: 'goal-store',
