@@ -201,6 +201,10 @@ export const useGoalStore = create<GoalStoreState>()(
         if (get().isProcessingQueue || get().pendingLogMutations.length === 0) return;
 
         set({ isProcessingQueue: true });
+        // Exercise history (max weight / last log) is computed server-side and
+        // embedded in the /api/logs payload, so it only refreshes on a fetch.
+        // Without one, "max" and "last" keep showing pre-sync values.
+        let queueChanged = false;
 
         try {
           while (get().pendingLogMutations.length > 0) {
@@ -246,6 +250,7 @@ export const useGoalStore = create<GoalStoreState>()(
               console.warn(`Discarding rejected log mutation (${response.status}):`, next);
             }
 
+            queueChanged = true;
             set((state) => ({
               pendingLogMutations: state.pendingLogMutations.filter((mutation) => mutation.id !== next.id),
             }));
@@ -254,6 +259,11 @@ export const useGoalStore = create<GoalStoreState>()(
           console.error('Error processing log queue:', error);
         } finally {
           set({ isProcessingQueue: false });
+        }
+
+        const visibleDays = get().lastVisibleDays;
+        if (queueChanged && visibleDays) {
+          await get().fetchGoals(visibleDays);
         }
       },
       // Called on logout: the cache and the queue belong to the user who is

@@ -106,10 +106,9 @@ npm run db:import:remote    # Import local/trainingslog-d1-import.sql to remote
   - Query params: `goal_id`, `date`
   - Deletes goal_log and cascades to exercise_log if exists (transactional)
 
-**History**:
-- `GET /api/logs/history?exercise_id=123` - Get exercise performance history
-  - Returns: `{ maxWeight: {...}, lastLog: {...} }`
-  - Used by LogDialog to show max weight achieved and last workout
+**History**: there is no separate history endpoint. `GET /api/logs` embeds
+`{ maxWeight, lastLog }` per linked exercise under `linkedExercises[].history`,
+computed with window functions over `exercise_logs`.
 
 ### Frontend (`app/page.tsx`, `components/`)
 
@@ -220,9 +219,9 @@ For an existing single-user DB, `migrations/0001-add-auth.sql` adds the `users` 
    - Direct: `POST /api/logs/toggle` with goal_id and date only
    - Via exercise: Include exercise_id, weight, reps in same API call
 4. **Transactional logging**: When completing via exercise, both goal_log and exercise_log are created/updated in a transaction
-5. **Data fetching**: Main page calls `refetch()` after any mutation to refresh state
+5. **Data fetching**: Log mutations go through the optimistic queue in `useGoalStore`, which refetches `/api/logs` once the queue drains. Exercise history (max/last) is server-computed and embedded in that payload, so it is only correct after a fetch — never update it optimistically
 6. **Color system**: Four goal categories map to Tailwind classes in GoalRow component
-7. **Exercise history**: LogDialog fetches max/last for selected exercise to help pre-fill values
+7. **Exercise history**: max/last per linked exercise arrive with `/api/logs` (`linkedExercises[].history`); LogDialog reads them from the store to pre-fill values
 
 ## Database Initialization
 
