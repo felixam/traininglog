@@ -20,6 +20,15 @@ interface CompletionTrendsProps {
   data: CompletionAnalyticsResponse;
 }
 
+// Extrapolate next trend value based on existing trend line
+function extrapolateTrend(trendValues: number[]): number {
+  if (trendValues.length < 2) return trendValues[trendValues.length - 1] || 0;
+  const last = trendValues[trendValues.length - 1];
+  const secondLast = trendValues[trendValues.length - 2];
+  const slope = last - secondLast;
+  return Math.max(0, Math.round((last + slope) * 100) / 100);
+}
+
 // Calculate linear regression trend line
 function calculateTrendLine<T>(data: T[], getValue: (item: T) => number): number[] {
   const n = data.length;
@@ -75,7 +84,18 @@ export default function CompletionTrends({ data }: CompletionTrendsProps) {
 
   // Calculate trend lines
   const weeklyTrend = calculateTrendLine(trends, t => t.completions);
-  const monthlyTrend = calculateTrendLine(monthlyDays, m => m.trainingDays);
+  
+  // Exclude current incomplete month from trend calculation
+  const currentMonth = format(new Date(), 'yyyy-MM');
+  const isCurrentMonthIncluded = monthlyDays.length > 0 && 
+    monthlyDays[monthlyDays.length - 1].month === currentMonth;
+  const completedMonths = isCurrentMonthIncluded ? monthlyDays.slice(0, -1) : monthlyDays;
+  const completedMonthsTrend = calculateTrendLine(completedMonths, m => m.trainingDays);
+  
+  // Extrapolate trend for current month if included (for display continuity)
+  const monthlyTrend = isCurrentMonthIncluded && completedMonthsTrend.length > 0
+    ? [...completedMonthsTrend, extrapolateTrend(completedMonthsTrend)]
+    : completedMonthsTrend;
 
   // Format week data for chart with year visibility
   const weekDates = trends.map(t => t.date);

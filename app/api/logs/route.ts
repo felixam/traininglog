@@ -105,12 +105,13 @@ export async function GET(request: Request) {
 
       // Max-weight entry per exercise (window function, since SQLite has no DISTINCT ON).
       const maxWeightResult = await query(
+        // At equal weight the higher rep count wins (75kg x10 beats 75kg x8).
         `SELECT exercise_id, weight, reps, date
          FROM (
            SELECT exercise_id, weight, reps, date,
                   ROW_NUMBER() OVER (
                     PARTITION BY exercise_id
-                    ORDER BY weight DESC, date DESC
+                    ORDER BY weight DESC, reps DESC, date DESC
                   ) AS rn
            FROM exercise_logs
            WHERE exercise_id IN (${placeholders}) AND weight IS NOT NULL

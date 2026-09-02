@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { applyHistoryUpdate } from '../exerciseHistory';
 import { sortGoals } from '../goalUtils';
 import { classifyQueueResponse } from '../queueResult';
 import { GoalLogEntry, GoalWithLogs } from '../types';
@@ -68,12 +69,15 @@ const applyLogUpdate = (goals: GoalWithLogs[], payload: LogMutationPayload): Goa
     const prev = goal.last_completed_at;
     const nextLastCompletedAt = prev && prev > compositeKey ? prev : compositeKey;
 
+    const updatedLinkedExercises = applyHistoryUpdate(goal.linkedExercises, payload);
+
     return {
       ...goal,
       logs: {
         ...goal.logs,
         [payload.date]: nextLog,
       },
+      linkedExercises: updatedLinkedExercises,
       lastCompletedExerciseId: payload.exerciseId || goal.lastCompletedExerciseId,
       last_completed_at: nextLastCompletedAt,
     };
