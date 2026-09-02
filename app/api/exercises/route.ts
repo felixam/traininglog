@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getCurrentUser, unauthorized } from '@/lib/auth';
 
 // GET all exercises
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
   try {
     const result = await query(
-      'SELECT * FROM exercises ORDER BY name ASC'
+      'SELECT * FROM exercises WHERE user_id = $1 ORDER BY name ASC',
+      [user.userId]
     );
 
     return NextResponse.json(result.rows);
@@ -20,6 +25,9 @@ export async function GET() {
 
 // POST new exercise
 export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
   try {
     const body = await request.json();
     const { name } = body;
@@ -32,8 +40,8 @@ export async function POST(request: Request) {
     }
 
     const result = await query(
-      'INSERT INTO exercises (name) VALUES ($1) RETURNING *',
-      [name]
+      'INSERT INTO exercises (user_id, name) VALUES ($1, $2) RETURNING *',
+      [user.userId, name]
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });

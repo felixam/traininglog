@@ -2,9 +2,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Training log webapp for tracking goals and exercises with weight/reps tracking. Users can complete goals directly or via linked exercises. Single-user app with customizable goals, exercises, and configurable visible days (1-30).
+Training log webapp for tracking goals and exercises with weight/reps tracking. Users can complete goals directly or via linked exercises. Multi-user app: each user has their own goals, exercises, and logs, with customizable goals and configurable visible days (1-30).
 
-**Stack**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Cloudflare D1 (SQLite, accessed via Workers binding), Zustand (client store), deployed via `@opennextjs/cloudflare`.
+**Stack**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Cloudflare D1 (SQLite, accessed via Workers binding), Zustand (client store), deployed via `@opennextjs/cloudflare`. Auth is JWT (HS256, Web Crypto) in an httpOnly cookie.
+
+## Authentication & Multi-User
+
+- **Users**: identified by `username` (not email) with a 4-digit numeric PIN. PINs are PBKDF2-hashed with a per-user salt (`lib/auth.ts`).
+- **Login** (`/login`): pick a user from a dropdown and enter the PIN. When the DB has no users, the page switches to a "create first user" bootstrap form.
+- **Bootstrapping**: the first user can be created without auth. That user auto-claims any pre-existing un-owned rows (single-user → multi-user migration). Afterwards, only a logged-in user can create more users (any user may add another). Fresh users are seeded with the 12 default goals (`lib/defaultGoals.ts`).
+- **Sessions**: `signToken`/`verifyToken` in `lib/auth.ts` issue/verify the JWT; `getCurrentUser()` reads it from the `auth_token` cookie. Every data API route calls `getCurrentUser()` and returns 401 (`unauthorized()`) if absent, then scopes all queries by `user_id`.
+- **Page protection**: the `/` and `/analytics` routes are server components (`app/page.tsx`, `app/analytics/page.tsx`) that call `getCurrentUser()` and `redirect('/login')` when unauthenticated, then render their client counterparts (`HomeClient.tsx`, `analytics/AnalyticsClient.tsx`). No middleware/proxy — OpenNext on Cloudflare does not support Next 16 Node-runtime proxy. Client hooks also redirect to `/login` on a 401.
+- **Secret**: `JWT_SECRET` env var (set in `wrangler.jsonc` `vars` for dev; use `wrangler secret put JWT_SECRET` for prod).
+
+## Auth API Routes (`app/api/auth/`)
+
+- `GET /api/auth/users` — public; lists usernames for the login dropdown + `needsBootstrap` flag.
+- `POST /api/auth/login` — `{ username, password }` → sets `auth_token` cookie.
+- `POST /api/auth/logout` — clears the cookie.
+- `GET /api/auth/me` — returns the current `{ userId, username }` (401 if not logged in).
+- `POST /api/auth/register` — `{ username, password }`; first user is unauthenticated bootstrap (auto-login + claims orphan data), otherwise requires auth and does not change the caller's session.
 
 ## Development Commands
 
@@ -31,6 +48,7 @@ npm run db:import:remote    # Import local/trainingslog-d1-import.sql to remote
 - Requires a Cloudflare D1 database bound as `DB` in `wrangler.jsonc` (`d1_databases[]`).
 - No external database URL — D1 is accessed directly via the Workers binding.
 - Local dev gets the binding via `initOpenNextCloudflareForDev()` in `next.config.ts`, which wires `next dev` to the local D1 state managed by wrangler.
+- Requires a `JWT_SECRET` env var for auth. Dev reads it from `wrangler.jsonc` `vars`; production should override it with `wrangler secret put JWT_SECRET`.
 
 ## Architecture
 
@@ -137,29 +155,34 @@ npm run db:import:remote    # Import local/trainingslog-d1-import.sql to remote
 
 ### Database Schema (`schema.sql`)
 
-SQLite dialect. All primary keys are `INTEGER PRIMARY KEY AUTOINCREMENT`, dates/timestamps are `TEXT` (YYYY-MM-DD / ISO-ish), booleans are `INTEGER` (0/1), weights are `REAL`.
+SQLite dialect. All primary keys are `INTEGER PRIMARY KEY AUTOINCREMENT`, dates/timestamps are `TEXT` (YYYY-MM-DD / ISO-ish), booleans are `INTEGER` (0/1), weights are `REAL`. Every data table carries a `user_id` FK; all queries scope by it.
+
+**users**:
+- id, username (UNIQUE), password_hash, password_salt, created_at
 
 **goals**:
-- id, name, color, display_order, created_at
+- id, user_id (FK), name, color, display_order, created_at
 
 **exercises** (exercise library):
-- id, name, created_at
+- id, user_id (FK), name, created_at
 
 **goal_exercises** (junction table):
-- id, goal_id (FK), exercise_id (FK), created_at
+- id, user_id (FK), goal_id (FK), exercise_id (FK), created_at
 - UNIQUE(goal_id, exercise_id)
 
 **goal_logs**:
-- id, goal_id (FK), date, completed (0/1), exercise_id (FK, nullable), created_at, updated_at
+- id, user_id (FK), goal_id (FK), date, completed (0/1), exercise_id (FK, nullable), created_at, updated_at
 - UNIQUE(goal_id, date)
 - ON DELETE CASCADE from goals
 
 **exercise_logs** (tracks weight/reps):
-- id, exercise_id (FK), date, weight, reps, created_at, updated_at
+- id, user_id (FK), exercise_id (FK), date, weight, reps, created_at, updated_at
 - UNIQUE(exercise_id, date)
 - ON DELETE CASCADE from exercises
 
-**Indexes**: All foreign keys and date columns are indexed for performance.
+**Indexes**: All foreign keys (including `user_id`) and date columns are indexed for performance.
+
+For an existing single-user DB, `migrations/0001-add-auth.sql` adds the `users` table and nullable `user_id` columns; the first registered user claims those rows.
 
 ### Hooks & Utils
 
@@ -206,8 +229,10 @@ SQLite dialect. All primary keys are `INTEGER PRIMARY KEY AUTOINCREMENT`, dates/
 First-time setup:
 1. `npm run db:create` — creates the D1 database, prints a `database_id`.
 2. Paste the `database_id` into `wrangler.jsonc` (replacing `REPLACE_WITH_D1_DATABASE_ID`).
-3. `npm run db:init:remote` — applies `schema.sql` and seeds 12 default goals.
-4. (Optional) `npm run db:import:remote` — imports `local/trainingslog-d1-import.sql` (overwrites all data with the rows from that file).
+3. `npm run db:init:remote` — applies `schema.sql` (tables only; no users/goals seeded).
+4. Open the app and create the first user via the `/login` bootstrap form. That user gets the 12 default goals seeded automatically.
+
+Existing single-user DB: run `wrangler d1 execute trainingslog --remote --file=migrations/0001-add-auth.sql` instead of re-initializing, then register the first user (it claims the existing data).
 
 The local dev DB lives under `.wrangler/state/`. Use the `*:local` script variants for it.
 

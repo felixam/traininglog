@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { format } from 'date-fns';
 import type { ProgressionAnalyticsResponse, ExerciseProgression, ExerciseProgressionEntry } from '@/lib/types';
+import { getCurrentUser, unauthorized } from '@/lib/auth';
 
 interface ExerciseRow {
   id: number;
@@ -24,6 +25,9 @@ function calculate1RM(weight: number | null, reps: number | null): number | null
 }
 
 export async function GET(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('start_date');
@@ -34,7 +38,8 @@ export async function GET(request: NextRequest) {
     let effectiveStartDate: string = startDate || endDate;
     if (!startDate) {
       const earliestResult = await query(
-        'SELECT MIN(date) as min_date FROM exercise_logs WHERE weight IS NOT NULL'
+        'SELECT MIN(date) as min_date FROM exercise_logs WHERE weight IS NOT NULL AND user_id = $1',
+        [user.userId]
       );
       effectiveStartDate = (earliestResult.rows[0]?.min_date as string) || endDate;
     }
@@ -45,11 +50,12 @@ export async function GET(request: NextRequest) {
       FROM exercises e
       LEFT JOIN goal_exercises ge ON ge.exercise_id = e.id
       LEFT JOIN goals g ON g.id = ge.goal_id
+      WHERE e.user_id = $1
     `;
-    const exercisesParams: number[] = [];
+    const exercisesParams: number[] = [user.userId];
 
     if (exerciseId) {
-      exercisesQuery += ' WHERE e.id = $1';
+      exercisesQuery += ' AND e.id = $2';
       exercisesParams.push(parseInt(exerciseId));
     }
 
@@ -62,13 +68,13 @@ export async function GET(request: NextRequest) {
     let logsQuery = `
       SELECT exercise_id, date, weight, reps
       FROM exercise_logs
-      WHERE date >= $1 AND date <= $2
+      WHERE user_id = $1 AND date >= $2 AND date <= $3
         AND weight IS NOT NULL
     `;
-    const logsParams: (string | number)[] = [effectiveStartDate, endDate];
+    const logsParams: (string | number)[] = [user.userId, effectiveStartDate, endDate];
 
     if (exerciseId) {
-      logsQuery += ' AND exercise_id = $3';
+      logsQuery += ' AND exercise_id = $4';
       logsParams.push(parseInt(exerciseId));
     }
 
@@ -86,12 +92,14 @@ export async function GET(request: NextRequest) {
     });
 
     // Get goal names for each exercise (ordered by goal display_order)
-    const goalNamesResult = await query(`
-      SELECT ge.exercise_id, g.name as goal_name
+    const goalNamesResult = await query(
+      `SELECT ge.exercise_id, g.name as goal_name
       FROM goal_exercises ge
       JOIN goals g ON g.id = ge.goal_id
-      ORDER BY ge.exercise_id, g.display_order
-    `);
+      WHERE ge.user_id = $1
+      ORDER BY ge.exercise_id, g.display_order`,
+      [user.userId]
+    );
     const goalNamesByExercise = new Map<number, string[]>();
     (goalNamesResult.rows as { exercise_id: number; goal_name: string }[]).forEach(row => {
       const existing = goalNamesByExercise.get(row.exercise_id) || [];

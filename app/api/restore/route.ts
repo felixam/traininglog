@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { batch, type BatchStatement } from '@/lib/db';
+import { batch, query, type BatchStatement } from '@/lib/db';
+import { getCurrentUser, unauthorized } from '@/lib/auth';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type BackupRow = Record<string, any>;
@@ -33,6 +34,10 @@ function validateBackup(backup: unknown): backup is BackupData {
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+  const userId = user.userId;
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -59,57 +64,71 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid backup format' }, { status: 400 });
     }
 
+    // Wipe only the current user's data (children before parents).
+    await batch([
+      { sql: 'DELETE FROM exercise_logs WHERE user_id = $1', params: [userId] },
+      { sql: 'DELETE FROM goal_logs WHERE user_id = $1', params: [userId] },
+      { sql: 'DELETE FROM goal_exercises WHERE user_id = $1', params: [userId] },
+      { sql: 'DELETE FROM exercises WHERE user_id = $1', params: [userId] },
+      { sql: 'DELETE FROM goals WHERE user_id = $1', params: [userId] },
+    ]);
+
+    // Re-insert with fresh ids (ids are global, so backup ids cannot be reused).
+    // Track old -> new id maps to rewire relationships.
+    const goalIdMap = new Map<number, number>();
+    for (const goal of backup.data.goals) {
+      const inserted = await query(
+        'INSERT INTO goals (user_id, name, color, display_order, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [userId, goal.name, goal.color, goal.display_order, goal.created_at]
+      );
+      goalIdMap.set(Number(goal.id), Number(inserted.rows[0].id));
+    }
+
+    const exerciseIdMap = new Map<number, number>();
+    for (const exercise of backup.data.exercises) {
+      const inserted = await query(
+        'INSERT INTO exercises (user_id, name, created_at) VALUES ($1, $2, $3) RETURNING id',
+        [userId, exercise.name, exercise.created_at]
+      );
+      exerciseIdMap.set(Number(exercise.id), Number(inserted.rows[0].id));
+    }
+
     const statements: BatchStatement[] = [];
 
-    // Children before parents on delete (no ON DELETE CASCADE on bare DELETEs in SQLite without FK enforcement-on triggers; explicit order is safest).
-    statements.push({ sql: 'DELETE FROM exercise_logs' });
-    statements.push({ sql: 'DELETE FROM goal_logs' });
-    statements.push({ sql: 'DELETE FROM goal_exercises' });
-    statements.push({ sql: 'DELETE FROM exercises' });
-    statements.push({ sql: 'DELETE FROM goals' });
-    statements.push({
-      sql: `DELETE FROM sqlite_sequence WHERE name IN ('goals','exercises','goal_exercises','goal_logs','exercise_logs')`,
-    });
-
-    // Parents before children on insert.
-    for (const goal of backup.data.goals) {
-      statements.push({
-        sql: 'INSERT INTO goals (id, name, color, display_order, created_at) VALUES (?, ?, ?, ?, ?)',
-        params: [goal.id, goal.name, goal.color, goal.display_order, goal.created_at],
-      });
-    }
-    for (const exercise of backup.data.exercises) {
-      statements.push({
-        sql: 'INSERT INTO exercises (id, name, created_at) VALUES (?, ?, ?)',
-        params: [exercise.id, exercise.name, exercise.created_at],
-      });
-    }
     for (const link of backup.data.goal_exercises) {
+      const goalId = goalIdMap.get(Number(link.goal_id));
+      const exerciseId = exerciseIdMap.get(Number(link.exercise_id));
+      if (goalId === undefined || exerciseId === undefined) continue;
       statements.push({
-        sql: 'INSERT INTO goal_exercises (id, goal_id, exercise_id, created_at) VALUES (?, ?, ?, ?)',
-        params: [link.id, link.goal_id, link.exercise_id, link.created_at],
+        sql: 'INSERT INTO goal_exercises (user_id, goal_id, exercise_id, created_at) VALUES ($1, $2, $3, $4)',
+        params: [userId, goalId, exerciseId, link.created_at],
       });
     }
     for (const log of backup.data.goal_logs) {
+      const goalId = goalIdMap.get(Number(log.goal_id));
+      if (goalId === undefined) continue;
+      const exerciseId = log.exercise_id != null ? exerciseIdMap.get(Number(log.exercise_id)) ?? null : null;
       statements.push({
-        sql: 'INSERT INTO goal_logs (id, goal_id, date, completed, exercise_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        sql: 'INSERT INTO goal_logs (user_id, goal_id, date, completed, exercise_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
         params: [
-          log.id,
-          log.goal_id,
+          userId,
+          goalId,
           log.date,
           log.completed ? 1 : 0,
-          log.exercise_id ?? null,
+          exerciseId,
           log.created_at,
           log.updated_at,
         ],
       });
     }
     for (const log of backup.data.exercise_logs) {
+      const exerciseId = exerciseIdMap.get(Number(log.exercise_id));
+      if (exerciseId === undefined) continue;
       statements.push({
-        sql: 'INSERT INTO exercise_logs (id, exercise_id, date, weight, reps, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        sql: 'INSERT INTO exercise_logs (user_id, exercise_id, date, weight, reps, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
         params: [
-          log.id,
-          log.exercise_id,
+          userId,
+          exerciseId,
           log.date,
           log.weight ?? null,
           log.reps ?? null,
@@ -119,7 +138,9 @@ export async function POST(request: Request) {
       });
     }
 
-    await batch(statements);
+    if (statements.length > 0) {
+      await batch(statements);
+    }
 
     return NextResponse.json({
       success: true,

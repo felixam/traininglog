@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { format, parseISO, startOfWeek, differenceInWeeks, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns';
 import type { CompletionAnalyticsResponse, GoalCompletionStats, CompletionTrend, GoalColor, MonthlyTrainingDays } from '@/lib/types';
+import { getCurrentUser, unauthorized } from '@/lib/auth';
 
 interface GoalRow {
   id: number;
@@ -58,6 +59,9 @@ function calculateWeeklyStreak(dates: string[], today: Date): { current: number;
 }
 
 export async function GET(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('start_date');
@@ -68,26 +72,30 @@ export async function GET(request: NextRequest) {
     let effectiveStartDate: string = startDate || endDate;
     if (!startDate) {
       const earliestResult = await query(
-        'SELECT MIN(date) as min_date FROM goal_logs WHERE completed = 1'
+        'SELECT MIN(date) as min_date FROM goal_logs WHERE completed = 1 AND user_id = $1',
+        [user.userId]
       );
       effectiveStartDate = (earliestResult.rows[0]?.min_date as string) || endDate;
     }
 
     // Get all goals
-    const goalsResult = await query('SELECT id, name, color FROM goals ORDER BY display_order');
+    const goalsResult = await query(
+      'SELECT id, name, color FROM goals WHERE user_id = $1 ORDER BY display_order',
+      [user.userId]
+    );
     const goals = goalsResult.rows as GoalRow[];
 
     // Get all completed logs in range
     let logsQuery = `
       SELECT goal_id, date
       FROM goal_logs
-      WHERE completed = 1
-        AND date >= $1 AND date <= $2
+      WHERE completed = 1 AND user_id = $1
+        AND date >= $2 AND date <= $3
     `;
-    const logsParams: (string | number)[] = [effectiveStartDate, endDate];
+    const logsParams: (string | number)[] = [user.userId, effectiveStartDate, endDate];
 
     if (goalId) {
-      logsQuery += ' AND goal_id = $3';
+      logsQuery += ' AND goal_id = $4';
       logsParams.push(parseInt(goalId));
     }
 

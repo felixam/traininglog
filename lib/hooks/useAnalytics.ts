@@ -84,6 +84,10 @@ export function useAnalytics(filters: AnalyticsFilters): UseAnalyticsReturn {
 
     fetch(endpoints[activeTab], { signal: controller.signal })
       .then((res) => {
+        if (res.status === 401) {
+          if (typeof window !== 'undefined') window.location.assign('/login');
+          throw new Error('Unauthorized');
+        }
         if (!res.ok) throw new Error('Failed to fetch analytics data');
         return res.json();
       })

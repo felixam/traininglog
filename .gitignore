@@ -48,5 +48,8 @@ local/**
 .claude/
 .codex/
 
-# cloudflare (contains Hyperdrive ID)
+# cloudflare (contains D1 database ID and JWT_SECRET)
 wrangler.jsonc
+
+# local wrangler/D1 state
+/.wrangler/

@@ -1,8 +1,9 @@
 'use client';
 
 import { AppSettings } from '@/lib/settings';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Dialog from './Dialog';
+import AddUserDialog from './AddUserDialog';
 
 interface SettingsDialogProps {
   currentSettings: AppSettings;
@@ -24,6 +25,22 @@ export default function SettingsDialog({
   onRestore,
 }: SettingsDialogProps) {
   const [visibleDays, setVisibleDays] = useState(currentSettings.visibleDays.toString());
+  const [username, setUsername] = useState<string | null>(null);
+  const [showAddUser, setShowAddUser] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setUsername(data.username);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.assign('/login');
+  };
 
   const handleSave = () => {
     const days = Math.max(1, Math.min(30, parseInt(visibleDays) || 7));
@@ -40,6 +57,7 @@ export default function SettingsDialog({
   };
 
   return (
+    <>
     <Dialog onClose={onClose}>
       <div onKeyDown={handleKeyDown}>
         {/* Header */}
@@ -130,6 +148,42 @@ export default function SettingsDialog({
               <span>Restore Database</span>
             </button>
           </div>
+
+          {/* Separator */}
+          <div className="border-t border-gray-700 pt-4"></div>
+
+          {/* Account */}
+          {username && (
+            <p className="text-sm text-gray-400">
+              Signed in as <span className="text-gray-200">{username}</span>
+            </p>
+          )}
+
+          {/* Add User Button */}
+          <div>
+            <button
+              onClick={() => setShowAddUser(true)}
+              className="w-full px-4 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 text-gray-300 rounded-lg transition-colors flex items-center gap-3"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              <span>Add User</span>
+            </button>
+          </div>
+
+          {/* Log Out Button */}
+          <div>
+            <button
+              onClick={handleLogout}
+              className="w-full px-4 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-red-800 text-red-300 rounded-lg transition-colors flex items-center gap-3"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Log Out</span>
+            </button>
+          </div>
         </div>
 
         {/* Action Buttons */}
@@ -149,5 +203,7 @@ export default function SettingsDialog({
         </div>
       </div>
     </Dialog>
+    {showAddUser && <AddUserDialog onClose={() => setShowAddUser(false)} />}
+    </>
   );
 }

@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { format, subDays } from 'date-fns';
 import { GoalLogEntry, ExerciseWithHistory, ExerciseHistory } from '@/lib/types';
+import { getCurrentUser, unauthorized } from '@/lib/auth';
 
 // GET logs for the last N days (default 7)
 export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
   try {
     const { searchParams } = new URL(request.url);
     const daysParam = searchParams.get('days');
@@ -15,7 +19,8 @@ export async function GET(request: Request) {
     const endDate = format(today, 'yyyy-MM-dd');
 
     const goalsResult = await query(
-      'SELECT * FROM goals ORDER BY display_order ASC'
+      'SELECT * FROM goals WHERE user_id = $1 ORDER BY display_order ASC',
+      [user.userId]
     );
 
     const logsResult = await query(
@@ -29,15 +34,17 @@ export async function GET(request: Request) {
          el.reps
        FROM goal_logs gl
        LEFT JOIN exercise_logs el ON gl.exercise_id = el.exercise_id AND gl.date = el.date
-       WHERE gl.date >= $1 AND gl.date <= $2`,
-      [startDate, endDate]
+       WHERE gl.user_id = $1 AND gl.date >= $2 AND gl.date <= $3`,
+      [user.userId, startDate, endDate]
     );
 
     const linkedExercisesResult = await query(
       `SELECT ge.goal_id, e.id, e.name, e.created_at
        FROM goal_exercises ge
        INNER JOIN exercises e ON ge.exercise_id = e.id
-       ORDER BY e.name ASC`
+       WHERE ge.user_id = $1
+       ORDER BY e.name ASC`,
+      [user.userId]
     );
 
     const linkedExercisesMap: Record<number, ExerciseWithHistory[]> = {};
@@ -62,9 +69,10 @@ export async function GET(request: Request) {
          SELECT goal_id, exercise_id,
                 ROW_NUMBER() OVER (PARTITION BY goal_id ORDER BY date DESC) AS rn
          FROM goal_logs
-         WHERE exercise_id IS NOT NULL
+         WHERE exercise_id IS NOT NULL AND user_id = $1
        )
-       WHERE rn = 1`
+       WHERE rn = 1`,
+      [user.userId]
     );
 
     const lastExerciseMap: Record<number, number> = {};
@@ -80,8 +88,9 @@ export async function GET(request: Request) {
     const lastCompletedResult = await query(
       `SELECT goal_id, MAX(date || ' ' || substr(updated_at, 12)) AS last_completed_at
        FROM goal_logs
-       WHERE completed = 1
-       GROUP BY goal_id`
+       WHERE completed = 1 AND user_id = $1
+       GROUP BY goal_id`,
+      [user.userId]
     );
 
     const lastCompletedMap: Record<number, string> = {};

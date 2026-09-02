@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getCurrentUser, unauthorized } from '@/lib/auth';
 
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
   try {
-    // Query all tables
+    // Query the current user's data across all tables
     const [goals, exercises, goalExercises, goalLogs, exerciseLogs] = await Promise.all([
-      query('SELECT * FROM goals ORDER BY id'),
-      query('SELECT * FROM exercises ORDER BY id'),
-      query('SELECT * FROM goal_exercises ORDER BY id'),
-      query('SELECT * FROM goal_logs ORDER BY id'),
-      query('SELECT * FROM exercise_logs ORDER BY id'),
+      query('SELECT * FROM goals WHERE user_id = $1 ORDER BY id', [user.userId]),
+      query('SELECT * FROM exercises WHERE user_id = $1 ORDER BY id', [user.userId]),
+      query('SELECT * FROM goal_exercises WHERE user_id = $1 ORDER BY id', [user.userId]),
+      query('SELECT * FROM goal_logs WHERE user_id = $1 ORDER BY id', [user.userId]),
+      query('SELECT * FROM exercise_logs WHERE user_id = $1 ORDER BY id', [user.userId]),
     ]);
 
     // Create backup object

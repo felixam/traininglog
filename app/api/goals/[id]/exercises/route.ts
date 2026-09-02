@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getCurrentUser, unauthorized } from '@/lib/auth';
 
 // GET exercises linked to a goal
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
   try {
     const { id } = await params;
 
@@ -13,9 +17,9 @@ export async function GET(
       `SELECT e.*
        FROM exercises e
        INNER JOIN goal_exercises ge ON e.id = ge.exercise_id
-       WHERE ge.goal_id = $1
+       WHERE ge.goal_id = $1 AND ge.user_id = $2
        ORDER BY e.name ASC`,
-      [id]
+      [id, user.userId]
     );
 
     return NextResponse.json(result.rows);
@@ -33,6 +37,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -45,23 +52,23 @@ export async function POST(
       );
     }
 
-    const goalCheck = await query('SELECT id FROM goals WHERE id = $1', [id]);
+    const goalCheck = await query('SELECT id FROM goals WHERE id = $1 AND user_id = $2', [id, user.userId]);
     if (goalCheck.rows.length === 0) {
       return NextResponse.json({ error: 'Goal not found' }, { status: 404 });
     }
 
-    const exerciseCheck = await query('SELECT id FROM exercises WHERE id = $1', [exercise_id]);
+    const exerciseCheck = await query('SELECT id FROM exercises WHERE id = $1 AND user_id = $2', [exercise_id, user.userId]);
     if (exerciseCheck.rows.length === 0) {
       return NextResponse.json({ error: 'Exercise not found' }, { status: 404 });
     }
 
     // ON CONFLICT DO NOTHING ... RETURNING returns no row when the link already exists.
     const result = await query(
-      `INSERT INTO goal_exercises (goal_id, exercise_id)
-       VALUES ($1, $2)
+      `INSERT INTO goal_exercises (user_id, goal_id, exercise_id)
+       VALUES ($1, $2, $3)
        ON CONFLICT(goal_id, exercise_id) DO NOTHING
        RETURNING *`,
-      [id, exercise_id]
+      [user.userId, id, exercise_id]
     );
 
     if (result.rows.length === 0) {

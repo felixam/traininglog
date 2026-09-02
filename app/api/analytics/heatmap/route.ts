@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { format, subYears, eachDayOfInterval, parseISO } from 'date-fns';
 import type { HeatmapAnalyticsResponse, HeatmapDay } from '@/lib/types';
+import { getCurrentUser, unauthorized } from '@/lib/auth';
 
 interface LogRow {
   date: string;
@@ -9,6 +10,9 @@ interface LogRow {
 }
 
 export async function GET(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return unauthorized();
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const endDate = searchParams.get('end_date') || format(new Date(), 'yyyy-MM-dd');
@@ -19,13 +23,13 @@ export async function GET(request: NextRequest) {
     let logsQuery = `
       SELECT date, COUNT(*) as count
       FROM goal_logs
-      WHERE completed = 1
-        AND date >= $1 AND date <= $2
+      WHERE completed = 1 AND user_id = $1
+        AND date >= $2 AND date <= $3
     `;
-    const logsParams: (string | number)[] = [startDate, endDate];
+    const logsParams: (string | number)[] = [user.userId, startDate, endDate];
 
     if (goalId) {
-      logsQuery += ' AND goal_id = $3';
+      logsQuery += ' AND goal_id = $4';
       logsParams.push(parseInt(goalId));
     }
 

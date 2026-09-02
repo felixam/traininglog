@@ -16,6 +16,11 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2024-12-01",
   "compatibility_flags": ["nodejs_compat"],
+  // JWT signing secret for auth. Use a long random string here for local dev,
+  // and override in production with `wrangler secret put JWT_SECRET`.
+  "vars": {
+    "JWT_SECRET": "change-me-to-a-long-random-string"
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"

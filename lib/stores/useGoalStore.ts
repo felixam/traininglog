@@ -33,6 +33,13 @@ interface GoalStoreState {
   processQueue: () => Promise<void>;
 }
 
+// An expired/invalid session surfaces as a 401 from the API. Bounce to login.
+const redirectToLogin = () => {
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.assign('/login');
+  }
+};
+
 const generateId = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -129,6 +136,10 @@ export const useGoalStore = create<GoalStoreState>()(
 
         try {
           const response = await fetch(`/api/logs?days=${visibleDays}`);
+          if (response.status === 401) {
+            redirectToLogin();
+            return;
+          }
           if (!response.ok) {
             throw new Error(`Request failed with status ${response.status}`);
           }
@@ -212,6 +223,11 @@ export const useGoalStore = create<GoalStoreState>()(
               response = await fetch(`/api/logs/toggle?goal_id=${goalId}&date=${date}`, {
                 method: 'DELETE',
               });
+            }
+
+            if (response.status === 401) {
+              redirectToLogin();
+              break;
             }
 
             if (!response.ok) {
